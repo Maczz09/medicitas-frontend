@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   TEMA — tokens por CSS variables (canales RGB)
+   :root = oscuro (default) · html.light = claro
+   ───────────────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    color-scheme: dark;
+    --navy-950: 6 10 20;
+    --navy-900: 10 16 32;
+    --navy-850: 13 21 38;
+    --navy-800: 17 27 50;
+    --navy-750: 22 34 62;
+    --navy-700: 28 44 77;
+    --navy-600: 36 55 94;
+    --navy-500: 46 69 112;
+    --ink-100: 234 240 251;
+    --ink-200: 199 210 230;
+    --ink-300: 148 163 184;
+    --ink-400: 100 116 139;
+    --ink-500: 71 85 105;
+    --hairline: 255 255 255;
+    --hairline-alpha: 0.06;
+    --body-glow-1: rgba(37, 99, 235, 0.16);
+    --body-glow-2: rgba(56, 189, 248, 0.08);
+  }
+
+  html.light {
+    color-scheme: light;
+    --navy-950: 237 242 248; /* fondo de página */
+    --navy-900: 248 250 252;
+    --navy-850: 255 255 255; /* tarjetas */
+    --navy-800: 241 245 249;
+    --navy-750: 233 239 246;
+    --navy-700: 219 228 240;
+    --navy-600: 203 215 233;
+    --navy-500: 180 197 224;
+    --ink-100: 15 23 42; /* texto principal */
+    --ink-200: 30 41 59;
+    --ink-300: 71 85 105;
+    --ink-400: 100 116 139;
+    --ink-500: 148 163 184;
+    --hairline: 15 23 42;
+    --hairline-alpha: 0.1;
+    --body-glow-1: rgba(37, 99, 235, 0.1);
+    --body-glow-2: rgba(56, 189, 248, 0.08);
+  }
+
+  * {
+    border-color: rgb(var(--hairline) / var(--hairline-alpha));
+  }
+
+  html,
+  body,
+  #root {
+    @apply h-full;
+  }
+
+  body {
+    @apply bg-navy-950 text-ink-100 font-sans antialiased;
+    background-image:
+      radial-gradient(70% 55% at 50% -10%, var(--body-glow-1) 0%, transparent 60%),
+      radial-gradient(40% 40% at 100% 0%, var(--body-glow-2) 0%, transparent 55%);
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    @apply bg-brand-500/30;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: rgb(var(--hairline) / 0.18);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--hairline) / 0.3);
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Modo claro — voltear overlays "white/*" a slate para que se vean
+   sobre fondos claros (sin tocar los componentes).
+   ───────────────────────────────────────────────────────────── */
+@layer utilities {
+  html.light .border-white\/\[0\.04\] { border-color: rgb(15 23 42 / 0.07); }
+  html.light .border-white\/\[0\.05\] { border-color: rgb(15 23 42 / 0.08); }
+  html.light .border-white\/\[0\.06\] { border-color: rgb(15 23 42 / 0.09); }
+  html.light .border-white\/\[0\.07\] { border-color: rgb(15 23 42 / 0.10); }
+  html.light .border-white\/\[0\.08\] { border-color: rgb(15 23 42 / 0.11); }
+  html.light .border-white\/10 { border-color: rgb(15 23 42 / 0.14); }
+
+  html.light .bg-white\/\[0\.01\] { background-color: rgb(15 23 42 / 0.015); }
+  html.light .bg-white\/\[0\.02\] { background-color: rgb(15 23 42 / 0.025); }
+  html.light .bg-white\/\[0\.03\] { background-color: rgb(15 23 42 / 0.035); }
+  html.light .bg-white\/\[0\.04\] { background-color: rgb(15 23 42 / 0.04); }
+  html.light .bg-white\/\[0\.05\] { background-color: rgb(15 23 42 / 0.05); }
+  html.light .bg-white\/\[0\.06\] { background-color: rgb(15 23 42 / 0.06); }
+  html.light .hover\:bg-white\/\[0\.04\]:hover { background-color: rgb(15 23 42 / 0.05); }
+  html.light .hover\:bg-white\/\[0\.06\]:hover { background-color: rgb(15 23 42 / 0.07); }
+  html.light .hover\:bg-white\/10:hover { background-color: rgb(15 23 42 / 0.08); }
+
+  html.light .divide-white\/\[0\.04\] > :not([hidden]) ~ :not([hidden]) {
+    border-color: rgb(15 23 42 / 0.08);
+  }
+  html.light .ring-white\/10 { --tw-ring-color: rgb(15 23 42 / 0.12); }
+
+  html.light .glass { border-color: rgb(15 23 42 / 0.08); }
+  html.light .glass-strong { border-color: rgb(15 23 42 / 0.1); }
+}
+
+@layer components {
+  .glass {
+    @apply border border-white/[0.07] bg-navy-850/70 backdrop-blur-xl;
+  }
+  .glass-strong {
+    @apply border border-white/10 bg-navy-800/80 backdrop-blur-2xl;
+  }
+  .text-gradient {
+    @apply bg-gradient-to-r from-white via-brand-100 to-brand-300 bg-clip-text text-transparent;
+  }
+  html.light .text-gradient {
+    @apply from-brand-700 via-brand-600 to-brand-500;
+  }
+  .focus-ring {
+    @apply outline-none ring-offset-0 focus-visible:ring-2 focus-visible:ring-brand-500/70;
+  }
+  .sheen::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full bg-sheen;
+    animation: shimmer 1.8s infinite;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
