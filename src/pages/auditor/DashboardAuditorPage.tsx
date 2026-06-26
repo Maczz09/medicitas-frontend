@@ -70,7 +70,7 @@ export default function DashboardAuditorPage() {
                 <BarChart data={porServicio} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                   <XAxis dataKey="name" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={{ stroke: 'rgba(255,255,255,0.08)' }} tickLine={false} />
                   <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ background: '#0d1526', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12, color: '#eaf0fb' }} />
+                  <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} contentStyle={{ background: 'rgb(var(--navy-800))', border: '1px solid rgb(var(--hairline) / 0.15)', borderRadius: 12, fontSize: 12, color: 'rgb(var(--ink-100))' }} />
                   <Bar dataKey="value" radius={[6, 6, 0, 0]}>
                     {porServicio.map((_, i) => (
                       <Cell key={i} fill={COLORS[i % COLORS.length]} />
@@ -98,7 +98,7 @@ export default function DashboardAuditorPage() {
                         <Cell key={i} fill={COLORS[i % COLORS.length]} stroke="none" />
                       ))}
                     </Pie>
-                    <Tooltip contentStyle={{ background: '#0d1526', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12, color: '#eaf0fb' }} />
+                    <Tooltip contentStyle={{ background: 'rgb(var(--navy-800))', border: '1px solid rgb(var(--hairline) / 0.15)', borderRadius: 12, fontSize: 12, color: 'rgb(var(--ink-100))' }} />
                   </PieChart>
                 </ResponsiveContainer>
                 <ul className="flex-1 space-y-1.5">

@@ -35,6 +35,19 @@ export interface ActualizarContactoInput {
   direccion?: string;
 }
 
+/** Edición completa de un paciente (todos los campos). */
+export interface ActualizarPacienteInput {
+  nombre?: string;
+  apellido?: string;
+  tipo_documento?: TipoDocumento;
+  numero_documento?: string;
+  fecha_nacimiento?: string;
+  sexo?: Sexo;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
+}
+
 export interface ListarPacientesParams {
   q?: string;
   page?: number;

@@ -13,9 +13,11 @@ import {
   Cake,
 } from 'lucide-react';
 import { Avatar, Badge, Button, Card, CardBody, FullSpinner, EmptyState } from '@/components/ui';
-import { ContactoFormModal } from '@/features/pacientes/ContactoFormModal';
+import { PacienteEditModal } from '@/features/pacientes/PacienteEditModal';
 import { usePaciente } from '@/features/pacientes/usePacientes';
 import { edadDesde, fmtDate } from '@/lib/format';
+import { useAuthStore } from '@/store/auth.store';
+import { basePathForRole } from '@/lib/roles';
 
 function InfoRow({ icon: Icon, label, value }: { icon: typeof Mail; label: string; value?: string | null }) {
   return (
@@ -34,6 +36,9 @@ function InfoRow({ icon: Icon, label, value }: { icon: typeof Mail; label: strin
 export default function PacienteDetallePage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const rol = useAuthStore((s) => s.user?.rol);
+  const base = basePathForRole(rol);
+  const esRecepcion = rol === 'Recepcionista';
   const { data: paciente, isLoading, isError } = usePaciente(id);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -53,7 +58,7 @@ export default function PacienteDetallePage() {
   return (
     <div>
       <button
-        onClick={() => navigate('/recepcion/pacientes')}
+        onClick={() => navigate(`${base}/pacientes`)}
         className="mb-4 inline-flex items-center gap-1.5 text-sm text-ink-400 transition-colors hover:text-ink-200"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -85,7 +90,7 @@ export default function PacienteDetallePage() {
               </div>
             </div>
             <Button variant="secondary" className="mt-4 w-full" leftIcon={<Pencil className="h-4 w-4" />} onClick={() => setEditOpen(true)}>
-              Editar contacto
+              Editar paciente
             </Button>
           </CardBody>
         </Card>
@@ -106,41 +111,43 @@ export default function PacienteDetallePage() {
             </CardBody>
           </Card>
 
-          <Card>
-            <CardBody>
-              <h3 className="mb-3 text-sm font-semibold text-ink-200">Acciones rápidas</h3>
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Button
-                  variant="secondary"
-                  className="h-auto flex-col gap-2 py-4"
-                  onClick={() => navigate('/recepcion/citas', { state: { paciente } })}
-                >
-                  <CalendarPlus className="h-5 w-5 text-brand-300" />
-                  Agendar cita
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="h-auto flex-col gap-2 py-4"
-                  onClick={() => navigate('/recepcion/cobertura', { state: { paciente } })}
-                >
-                  <ShieldCheck className="h-5 w-5 text-brand-300" />
-                  Validar seguro
-                </Button>
-                <Button
-                  variant="secondary"
-                  className="h-auto flex-col gap-2 py-4"
-                  onClick={() => navigate('/recepcion/pagos', { state: { paciente } })}
-                >
-                  <CreditCard className="h-5 w-5 text-brand-300" />
-                  Registrar pago
-                </Button>
-              </div>
-            </CardBody>
-          </Card>
+          {esRecepcion && (
+            <Card>
+              <CardBody>
+                <h3 className="mb-3 text-sm font-semibold text-ink-200">Acciones rápidas</h3>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Button
+                    variant="secondary"
+                    className="h-auto flex-col gap-2 py-4"
+                    onClick={() => navigate('/recepcion/citas', { state: { paciente } })}
+                  >
+                    <CalendarPlus className="h-5 w-5 text-brand-300" />
+                    Agendar cita
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="h-auto flex-col gap-2 py-4"
+                    onClick={() => navigate('/recepcion/cobertura', { state: { paciente } })}
+                  >
+                    <ShieldCheck className="h-5 w-5 text-brand-300" />
+                    Validar seguro
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="h-auto flex-col gap-2 py-4"
+                    onClick={() => navigate('/recepcion/pagos', { state: { paciente } })}
+                  >
+                    <CreditCard className="h-5 w-5 text-brand-300" />
+                    Registrar pago
+                  </Button>
+                </div>
+              </CardBody>
+            </Card>
+          )}
         </div>
       </div>
 
-      <ContactoFormModal paciente={paciente} open={editOpen} onOpenChange={setEditOpen} />
+      <PacienteEditModal paciente={paciente} open={editOpen} onOpenChange={setEditOpen} />
     </div>
   );
 }

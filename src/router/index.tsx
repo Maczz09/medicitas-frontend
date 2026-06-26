@@ -31,6 +31,11 @@ const DashboardAuditorPage = lazy(() => import('@/pages/auditor/DashboardAuditor
 const TrazasPage = lazy(() => import('@/pages/auditor/TrazasPage'));
 const UsuariosPage = lazy(() => import('@/pages/auditor/UsuariosPage'));
 const MedicosAdminPage = lazy(() => import('@/pages/auditor/MedicosAdminPage'));
+const AdminCitasPage = lazy(() => import('@/pages/auditor/AdminCitasPage'));
+const AdminPagosPage = lazy(() => import('@/pages/auditor/AdminPagosPage'));
+const AdminCoberturasPage = lazy(() => import('@/pages/auditor/AdminCoberturasPage'));
+const AdminPrescripcionesPage = lazy(() => import('@/pages/auditor/AdminPrescripcionesPage'));
+const AdminNotificacionesPage = lazy(() => import('@/pages/auditor/AdminNotificacionesPage'));
 
 function RootRedirect() {
   const user = useAuthStore((s) => s.user);
@@ -56,6 +61,7 @@ export function AppRouter() {
               <Route path="/recepcion/cobertura" element={<ValidarCoberturaPage />} />
               <Route path="/recepcion/pagos" element={<PagosPage />} />
               <Route path="/recepcion/recetas" element={<RecetasPage />} />
+              <Route path="/recepcion/usuarios" element={<UsuariosPage />} />
             </Route>
 
             {/* ─── Médico ─── */}
@@ -65,11 +71,19 @@ export function AppRouter() {
               <Route path="/medico/historias" element={<HistoriaClinicaPage />} />
               <Route path="/medico/agenda" element={<AgendaPage />} />
               <Route path="/medico/recetas" element={<RecetasPage />} />
+              <Route path="/medico/usuarios" element={<UsuariosPage />} />
             </Route>
 
             {/* ─── Auditor ─── */}
             <Route element={<RoleRoute allow={['Auditor']} />}>
               <Route path="/auditor" element={<DashboardAuditorPage />} />
+              <Route path="/auditor/pacientes" element={<PacientesPage />} />
+              <Route path="/auditor/pacientes/:id" element={<PacienteDetallePage />} />
+              <Route path="/auditor/citas" element={<AdminCitasPage />} />
+              <Route path="/auditor/cobertura" element={<AdminCoberturasPage />} />
+              <Route path="/auditor/pagos" element={<AdminPagosPage />} />
+              <Route path="/auditor/prescripciones" element={<AdminPrescripcionesPage />} />
+              <Route path="/auditor/notificaciones" element={<AdminNotificacionesPage />} />
               <Route path="/auditor/trazas" element={<TrazasPage />} />
               <Route path="/auditor/usuarios" element={<UsuariosPage />} />
               <Route path="/auditor/medicos" element={<MedicosAdminPage />} />

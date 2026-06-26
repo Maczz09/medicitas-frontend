@@ -12,6 +12,11 @@ export function homePathForRole(rol?: Role | null): string {
   return ROLE_HOME[rol] ?? '/login';
 }
 
+/** Segmento base del módulo según el rol (/recepcion, /medico, /auditor). */
+export function basePathForRole(rol?: Role | null): string {
+  return rol ? (ROLE_HOME[rol] ?? '/recepcion') : '/recepcion';
+}
+
 /** Etiqueta corta y color asociado a cada rol (para chips/avatares). */
 export const ROLE_META: Record<Role, { label: string; color: string }> = {
   Recepcionista: { label: 'Recepción', color: 'text-brand-300' },

@@ -8,9 +8,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Copy,
+  Eye,
+  Pencil,
   Search,
   Stethoscope,
-  UserCog,
   UserPlus,
   Users,
 } from 'lucide-react';
@@ -29,9 +30,12 @@ import {
   Tooltip,
   type BadgeTone,
 } from '@/components/ui';
+import { UserProfileModal } from '@/features/usuarios/UserProfileModal';
+import { UserEditModal } from '@/features/usuarios/UserEditModal';
 import { authApi } from '@/api/auth.api';
 import { apiError } from '@/api/http';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useAuthStore } from '@/store/auth.store';
 import { fmtDate } from '@/lib/format';
 import type { Role, UsuarioAdmin } from '@/types';
 
@@ -59,13 +63,18 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function UsuariosPage() {
   const qc = useQueryClient();
+  const rol = useAuthStore((s) => s.user?.rol);
+  const canCreate = rol === 'Auditor';
+  const canEdit = rol === 'Auditor'; // solo el Auditor edita usuarios
+  const canEditRole = rol === 'Auditor';
+
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debounced = useDebounce(search, 350);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [roleTarget, setRoleTarget] = useState<UsuarioAdmin | null>(null);
-  const [nuevoRol, setNuevoRol] = useState<Role>('Recepcionista');
+  const [profileTarget, setProfileTarget] = useState<UsuarioAdmin | null>(null);
+  const [editTarget, setEditTarget] = useState<UsuarioAdmin | null>(null);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['usuarios', debounced, page],
@@ -91,16 +100,6 @@ export default function UsuariosPage() {
     onError: (err) => toast.error(apiError(err, 'No se pudo crear el usuario')),
   });
 
-  const asignar = useMutation({
-    mutationFn: () => authApi.assignRole(roleTarget!.id_usuario, nuevoRol),
-    onSuccess: () => {
-      toast.success('Rol actualizado');
-      qc.invalidateQueries({ queryKey: ['usuarios'] });
-      setRoleTarget(null);
-    },
-    onError: (err) => toast.error(apiError(err, 'No se pudo cambiar el rol')),
-  });
-
   const usuarios = data?.data ?? [];
   const meta = data?.meta;
 
@@ -109,15 +108,22 @@ export default function UsuariosPage() {
     toast.success('UUID copiado');
   };
 
+  const subtitle =
+    rol === 'Médico'
+      ? 'Directorio del personal (solo lectura)'
+      : 'Todo el personal con acceso al sistema';
+
   return (
     <div>
       <PageHeader
         title="Usuarios"
-        subtitle="Todo el personal con acceso al sistema"
+        subtitle={subtitle}
         actions={
-          <Button leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
-            Nuevo usuario
-          </Button>
+          canCreate && (
+            <Button leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
+              Nuevo usuario
+            </Button>
+          )
         }
       />
 
@@ -201,18 +207,25 @@ export default function UsuariosPage() {
                         </td>
                         <td className="hidden px-5 py-3 text-ink-400 md:table-cell">{fmtDate(u.created_at)}</td>
                         <td className="px-5 py-3">
-                          <div className="flex justify-end">
-                            <Tooltip content="Cambiar rol">
+                          <div className="flex items-center justify-end gap-1">
+                            <Tooltip content="Ver perfil">
                               <button
-                                onClick={() => {
-                                  setRoleTarget(u);
-                                  setNuevoRol(u.rolNombre);
-                                }}
+                                onClick={() => setProfileTarget(u)}
                                 className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
                               >
-                                <UserCog className="h-4 w-4" />
+                                <Eye className="h-4 w-4" />
                               </button>
                             </Tooltip>
+                            {canEdit && (
+                              <Tooltip content="Editar">
+                                <button
+                                  onClick={() => setEditTarget(u)}
+                                  className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                              </Tooltip>
+                            )}
                           </div>
                         </td>
                       </motion.tr>
@@ -241,58 +254,47 @@ export default function UsuariosPage() {
         )}
       </Card>
 
-      {/* Crear usuario */}
-      <Modal
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        title="Nuevo usuario"
-        description="Crea una cuenta de acceso para el personal"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSubmit((v) => crear.mutate(v))} loading={crear.isPending}>Crear usuario</Button>
-          </>
-        }
-      >
-        <form onSubmit={handleSubmit((v) => crear.mutate(v))} className="grid grid-cols-2 gap-3">
-          <Input label="Nombre" error={errors.nombre?.message} {...register('nombre')} />
-          <Input label="Apellido" error={errors.apellido?.message} {...register('apellido')} />
-          <div className="col-span-2">
-            <Input label="Correo" type="email" error={errors.email?.message} {...register('email')} />
-          </div>
-          <div className="col-span-2">
-            <Input label="Contraseña" type="password" error={errors.password?.message} hint="8+ con mayúscula, minúscula, número y especial" {...register('password')} />
-          </div>
-          <div className="col-span-2">
-            <Select label="Rol" error={errors.rolNombre?.message} {...register('rolNombre')}>
-              {ROLES.map((r) => (
-                <option key={r} value={r}>{r}</option>
-              ))}
-            </Select>
-          </div>
-        </form>
-      </Modal>
+      {/* Perfil (todos los roles) */}
+      <UserProfileModal usuario={profileTarget} open={!!profileTarget} onOpenChange={(o) => !o && setProfileTarget(null)} />
 
-      {/* Cambiar rol */}
-      <Modal
-        open={!!roleTarget}
-        onOpenChange={(o) => !o && setRoleTarget(null)}
-        title="Cambiar rol"
-        description={roleTarget ? `${roleTarget.nombre} ${roleTarget.apellido}` : undefined}
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setRoleTarget(null)}>Cancelar</Button>
-            <Button onClick={() => asignar.mutate()} loading={asignar.isPending}>Guardar</Button>
-          </>
-        }
-      >
-        <Select label="Nuevo rol" value={nuevoRol} onChange={(e) => setNuevoRol(e.target.value as Role)}>
-          {ROLES.map((r) => (
-            <option key={r} value={r}>{r}</option>
-          ))}
-        </Select>
-      </Modal>
+      {/* Editar (Auditor + Recepción) */}
+      {canEdit && (
+        <UserEditModal usuario={editTarget} open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)} canEditRole={canEditRole} />
+      )}
+
+      {/* Crear usuario (Auditor) */}
+      {canCreate && (
+        <Modal
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          title="Nuevo usuario"
+          description="Crea una cuenta de acceso para el personal"
+          footer={
+            <>
+              <Button variant="ghost" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSubmit((v) => crear.mutate(v))} loading={crear.isPending}>Crear usuario</Button>
+            </>
+          }
+        >
+          <form onSubmit={handleSubmit((v) => crear.mutate(v))} className="grid grid-cols-2 gap-3">
+            <Input label="Nombre" error={errors.nombre?.message} {...register('nombre')} />
+            <Input label="Apellido" error={errors.apellido?.message} {...register('apellido')} />
+            <div className="col-span-2">
+              <Input label="Correo" type="email" error={errors.email?.message} {...register('email')} />
+            </div>
+            <div className="col-span-2">
+              <Input label="Contraseña" type="password" error={errors.password?.message} hint="8+ con mayúscula, minúscula, número y especial" {...register('password')} />
+            </div>
+            <div className="col-span-2">
+              <Select label="Rol" error={errors.rolNombre?.message} {...register('rolNombre')}>
+                {ROLES.map((r) => (
+                  <option key={r} value={r}>{r}</option>
+                ))}
+              </Select>
+            </div>
+          </form>
+        </Modal>
+      )}
     </div>
   );
 }

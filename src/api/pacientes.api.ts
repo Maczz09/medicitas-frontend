@@ -1,6 +1,7 @@
 import { http } from './http';
 import type {
   ActualizarContactoInput,
+  ActualizarPacienteInput,
   CrearPacienteInput,
   ListarPacientesParams,
   Paciente,
@@ -21,6 +22,9 @@ export const pacientesApi = {
 
   create: (body: CrearPacienteInput) =>
     http.post<{ data: Paciente }>('/pacientes', body).then((r) => r.data.data),
+
+  update: (id: string, body: ActualizarPacienteInput) =>
+    http.put<{ data: Paciente }>(`/pacientes/${id}`, body).then((r) => r.data.data),
 
   updateContacto: (id: string, body: ActualizarContactoInput) =>
     http.put<{ mensaje: string }>(`/pacientes/${id}/contacto`, body).then((r) => r.data),

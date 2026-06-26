@@ -10,6 +10,11 @@ export const authApi = {
       .get<{ data: UsuarioAdmin[]; meta: PageMeta }>('/auth/usuarios', { params })
       .then((r) => r.data),
 
+  updateUsuario: (
+    id: string,
+    body: Partial<{ nombre: string; apellido: string; email: string; rolNombre: Role; activo: boolean }>,
+  ) => http.put<{ data: UsuarioAdmin }>(`/auth/usuarios/${id}`, body).then((r) => r.data.data),
+
   forgotPassword: (email: string) =>
     http.post<{ mensaje: string }>('/auth/forgot-password', { email }).then((r) => r.data),
 

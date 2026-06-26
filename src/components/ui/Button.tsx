@@ -9,7 +9,7 @@ const variants: Record<Variant, string> = {
   primary:
     'bg-brand-gradient text-white shadow-glow-sm hover:brightness-110 active:brightness-95',
   secondary: 'border border-white/10 bg-white/[0.05] text-ink-100 hover:bg-white/10',
-  ghost: 'text-ink-200 hover:bg-white/[0.06] hover:text-white',
+  ghost: 'text-ink-200 hover:bg-white/[0.06] hover:text-ink-100',
   danger: 'bg-bad/90 text-white hover:bg-bad active:brightness-95',
   outline: 'border border-brand-500/40 text-brand-200 hover:bg-brand-500/10',
   success: 'bg-ok/90 text-white hover:bg-ok active:brightness-95',

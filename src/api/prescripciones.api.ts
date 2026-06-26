@@ -1,11 +1,14 @@
 import { http } from './http';
-import type { Receta } from '@/types';
+import type { DespachoAdmin, PageMeta, Receta } from '@/types';
 
 function idemHeaders(key?: string) {
   return key ? { headers: { 'Idempotency-Key': key } } : undefined;
 }
 
 export const prescripcionesApi = {
+  list: (params: { page?: number; limit?: number; estado?: string }) =>
+    http.get<{ data: DespachoAdmin[]; meta: PageMeta }>('/prescripciones', { params }).then((r) => r.data),
+
   getById: (id: string) => http.get<Receta>(`/prescripciones/${id}`).then((r) => r.data),
 
   reintentar: (id: string, idempotencyKey?: string) =>

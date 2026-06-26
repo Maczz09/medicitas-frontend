@@ -25,17 +25,20 @@ import {
   Avatar,
 } from '@/components/ui';
 import { PacienteFormModal } from '@/features/pacientes/PacienteFormModal';
-import { ContactoFormModal } from '@/features/pacientes/ContactoFormModal';
+import { PacienteEditModal } from '@/features/pacientes/PacienteEditModal';
 import { usePacientesList, useToggleEstadoPaciente } from '@/features/pacientes/usePacientes';
 import { useDebounce } from '@/hooks/useDebounce';
 import { apiError } from '@/api/http';
 import { fmtDate } from '@/lib/format';
+import { useAuthStore } from '@/store/auth.store';
+import { basePathForRole } from '@/lib/roles';
 import type { Paciente } from '@/types';
 
 const isActivo = (p: Paciente) => p.activo === 1 || p.activo === true;
 
 export default function PacientesPage() {
   const navigate = useNavigate();
+  const base = basePathForRole(useAuthStore((s) => s.user?.rol));
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const debounced = useDebounce(search, 350);
@@ -160,7 +163,7 @@ export default function PacientesPage() {
                         <div className="flex items-center justify-end gap-1">
                           <Tooltip content="Ver detalle">
                             <button
-                              onClick={() => navigate(`/recepcion/pacientes/${p.id_paciente}`)}
+                              onClick={() => navigate(`${base}/pacientes/${p.id_paciente}`)}
                               className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
                             >
                               <Eye className="h-4 w-4" />
@@ -222,7 +225,7 @@ export default function PacientesPage() {
       </Card>
 
       <PacienteFormModal open={createOpen} onOpenChange={setCreateOpen} />
-      <ContactoFormModal paciente={editing} open={!!editing} onOpenChange={(o) => !o && setEditing(null)} />
+      <PacienteEditModal paciente={editing} open={!!editing} onOpenChange={(o) => !o && setEditing(null)} />
       <ConfirmDialog
         open={!!toggling}
         onOpenChange={(o) => !o && setToggling(null)}

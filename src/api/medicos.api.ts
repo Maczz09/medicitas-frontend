@@ -1,11 +1,22 @@
 import { http } from './http';
-import type { BloqueoAgendaInput, CrearMedicoInput, HorarioBase, Medico } from '@/types';
+import type {
+  ActualizarMedicoInput,
+  BloqueoAgendaInput,
+  CrearMedicoInput,
+  HorarioBase,
+  Medico,
+} from '@/types';
 
 export const medicosApi = {
   list: () => http.get<{ data: Medico[] }>('/medicos').then((r) => r.data.data),
 
+  getById: (id: string) => http.get<{ data: Medico }>(`/medicos/${id}`).then((r) => r.data.data),
+
   crear: (body: CrearMedicoInput) =>
     http.post<{ data: Medico }>('/medicos', body).then((r) => r.data.data),
+
+  update: (id: string, body: ActualizarMedicoInput) =>
+    http.put<{ data: Medico }>(`/medicos/${id}`, body).then((r) => r.data.data),
 
   disponibilidad: (id: string) =>
     http.get<{ data: unknown }>(`/medicos/${id}/disponibilidad`).then((r) => r.data.data),

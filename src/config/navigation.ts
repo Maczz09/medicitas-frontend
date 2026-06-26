@@ -1,4 +1,5 @@
 import {
+  Bell,
   CalendarClock,
   CalendarDays,
   CreditCard,
@@ -29,6 +30,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: 'Cobertura', to: '/recepcion/cobertura', icon: ShieldCheck },
     { label: 'Pagos', to: '/recepcion/pagos', icon: CreditCard },
     { label: 'Recetas', to: '/recepcion/recetas', icon: Pill },
+    { label: 'Usuarios', to: '/recepcion/usuarios', icon: UserCog },
   ],
   Médico: [
     { label: 'Inicio', to: '/medico', icon: LayoutDashboard, end: true },
@@ -36,11 +38,18 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: 'Historia clínica', to: '/medico/historias', icon: FileHeart },
     { label: 'Mi agenda', to: '/medico/agenda', icon: CalendarClock },
     { label: 'Recetas', to: '/medico/recetas', icon: Pill },
+    { label: 'Usuarios', to: '/medico/usuarios', icon: UserCog },
   ],
   Auditor: [
     { label: 'Inicio', to: '/auditor', icon: LayoutDashboard, end: true },
-    { label: 'Trazas', to: '/auditor/trazas', icon: ScrollText },
-    { label: 'Usuarios', to: '/auditor/usuarios', icon: UserCog },
+    { label: 'Pacientes', to: '/auditor/pacientes', icon: Users },
+    { label: 'Citas', to: '/auditor/citas', icon: CalendarDays },
+    { label: 'Cobertura', to: '/auditor/cobertura', icon: ShieldCheck },
+    { label: 'Pagos', to: '/auditor/pagos', icon: CreditCard },
+    { label: 'Prescripciones', to: '/auditor/prescripciones', icon: Pill },
     { label: 'Médicos', to: '/auditor/medicos', icon: Stethoscope },
+    { label: 'Usuarios', to: '/auditor/usuarios', icon: UserCog },
+    { label: 'Notificaciones', to: '/auditor/notificaciones', icon: Bell },
+    { label: 'Trazas', to: '/auditor/trazas', icon: ScrollText },
   ],
 };

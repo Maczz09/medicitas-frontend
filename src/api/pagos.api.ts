@@ -1,7 +1,10 @@
 import { http } from './http';
-import type { ConfirmarPagoInput, Pago } from '@/types';
+import type { ConfirmarPagoInput, Pago, PagoAdmin, PageMeta } from '@/types';
 
 export const pagosApi = {
+  list: (params: { page?: number; limit?: number; estado?: string }) =>
+    http.get<{ data: PagoAdmin[]; meta: PageMeta }>('/pagos', { params }).then((r) => r.data),
+
   confirmar: (body: ConfirmarPagoInput) =>
     http.post<Pago>('/pagos', body).then((r) => r.data),
 

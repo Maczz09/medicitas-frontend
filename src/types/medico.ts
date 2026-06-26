@@ -31,3 +31,12 @@ export interface BloqueoAgendaInput {
   fecha_fin: string;
   motivo: string;
 }
+
+/** Edición de un médico (todos los campos). */
+export interface ActualizarMedicoInput {
+  nombre?: string;
+  apellido?: string;
+  cmp?: string;
+  especialidad?: string;
+  activo?: boolean;
+}

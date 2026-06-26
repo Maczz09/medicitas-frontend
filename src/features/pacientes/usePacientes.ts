@@ -1,6 +1,11 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { pacientesApi } from '@/api/pacientes.api';
-import type { ActualizarContactoInput, CrearPacienteInput, ListarPacientesParams } from '@/types';
+import type {
+  ActualizarContactoInput,
+  ActualizarPacienteInput,
+  CrearPacienteInput,
+  ListarPacientesParams,
+} from '@/types';
 
 export function usePacientesList(params: ListarPacientesParams) {
   return useQuery({
@@ -23,6 +28,17 @@ export function useCrearPaciente() {
   return useMutation({
     mutationFn: (body: CrearPacienteInput) => pacientesApi.create(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['pacientes'] }),
+  });
+}
+
+export function useActualizarPaciente(id: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: ActualizarPacienteInput) => pacientesApi.update(id, body),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['pacientes'] });
+      qc.invalidateQueries({ queryKey: ['paciente', id] });
+    },
   });
 }
 

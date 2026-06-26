@@ -13,7 +13,7 @@ function NavRow({ item, idPrefix, onNavigate }: { item: NavItem; idPrefix: strin
         <div
           className={cn(
             'relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors',
-            isActive ? 'text-white' : 'text-ink-300 hover:bg-white/[0.04] hover:text-white',
+            isActive ? 'text-ink-100' : 'text-ink-300 hover:bg-white/[0.04] hover:text-ink-100',
           )}
         >
           {isActive && (

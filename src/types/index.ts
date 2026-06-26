@@ -8,3 +8,4 @@ export * from './pago';
 export * from './receta';
 export * from './hcl';
 export * from './auditoria';
+export * from './admin';

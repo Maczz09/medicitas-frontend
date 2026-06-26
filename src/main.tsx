@@ -30,16 +30,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           toastOptions={{
             duration: 4000,
             style: {
-              background: 'rgba(13,21,38,0.92)',
-              color: '#eaf0fb',
-              border: '1px solid rgba(255,255,255,0.08)',
+              background: 'rgb(var(--navy-850) / 0.96)',
+              color: 'rgb(var(--ink-100))',
+              border: '1px solid rgb(var(--hairline) / calc(var(--hairline-alpha) + 0.04))',
               backdropFilter: 'blur(12px)',
               borderRadius: '12px',
               fontSize: '14px',
-              boxShadow: '0 16px 40px -18px rgba(0,0,0,0.7)',
+              boxShadow: '0 16px 40px -18px rgba(0,0,0,0.5)',
             },
-            success: { iconTheme: { primary: '#10b981', secondary: '#0d1526' } },
-            error: { iconTheme: { primary: '#f43f5e', secondary: '#0d1526' } },
+            success: { iconTheme: { primary: '#10b981', secondary: 'rgb(var(--navy-850))' } },
+            error: { iconTheme: { primary: '#f43f5e', secondary: 'rgb(var(--navy-850))' } },
           }}
         />
       </BrowserRouter>

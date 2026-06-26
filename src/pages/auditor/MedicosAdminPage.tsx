@@ -4,12 +4,14 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { BadgePlus, Stethoscope } from 'lucide-react';
+import { BadgePlus, Pencil, Stethoscope } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Avatar, Button, Card, EmptyState, Input, Modal, PageHeader, SkeletonRows } from '@/components/ui';
+import { Avatar, Badge, Button, Card, EmptyState, Input, Modal, PageHeader, SkeletonRows, Tooltip } from '@/components/ui';
+import { MedicoEditModal } from '@/features/medicos/MedicoEditModal';
 import { useMedicos } from '@/hooks/useMedicos';
 import { medicosApi } from '@/api/medicos.api';
 import { apiError } from '@/api/http';
+import type { Medico } from '@/types';
 
 const schema = z.object({
   cmp: z.string().min(1, 'Requerido'),
@@ -31,6 +33,7 @@ export default function MedicosAdminPage() {
   const qc = useQueryClient();
   const { data: medicos, isLoading } = useMedicos();
   const [open, setOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<Medico | null>(null);
 
   const {
     register,
@@ -75,6 +78,8 @@ export default function MedicosAdminPage() {
                   <th className="px-5 py-3 font-medium">Médico</th>
                   <th className="px-5 py-3 font-medium">CMP</th>
                   <th className="px-5 py-3 font-medium">Especialidad</th>
+                  <th className="px-5 py-3 font-medium">Estado</th>
+                  <th className="px-5 py-3 text-right font-medium">Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -88,6 +93,22 @@ export default function MedicosAdminPage() {
                     </td>
                     <td className="px-5 py-3 font-mono text-ink-300">{m.cmp}</td>
                     <td className="px-5 py-3 text-ink-200">{m.especialidad}</td>
+                    <td className="px-5 py-3">
+                      {m.activo === 0 || m.activo === false ? (
+                        <Badge tone="neutral" dot>Inactivo</Badge>
+                      ) : (
+                        <Badge tone="success" dot>Activo</Badge>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
+                      <div className="flex justify-end">
+                        <Tooltip content="Editar médico">
+                          <button onClick={() => setEditTarget(m)} className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </Tooltip>
+                      </div>
+                    </td>
                   </motion.tr>
                 ))}
               </tbody>
@@ -124,6 +145,8 @@ export default function MedicosAdminPage() {
           </div>
         </form>
       </Modal>
+
+      <MedicoEditModal medico={editTarget} open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)} />
     </div>
   );
 }

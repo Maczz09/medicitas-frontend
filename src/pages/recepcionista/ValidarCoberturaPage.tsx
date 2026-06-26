@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { ShieldCheck, Sparkles } from 'lucide-react';
+import { Lock, ShieldCheck, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   Button,
@@ -34,8 +34,8 @@ export default function ValidarCoberturaPage() {
 
   const { coberturas, addCobertura } = useActivityStore();
   const [paciente, setPaciente] = useState<Paciente | null>(prefill);
-  const [idAseguradora, setIdAseguradora] = useState('ASEG-PROSALUD');
-  const [documento, setDocumento] = useState('');
+  const idAseguradora = 'ASEG-PROSALUD'; // fijo: la clínica trabaja con una aseguradora
+  const [documento, setDocumento] = useState(prefill?.numero_documento ?? '');
   const [tipoConsulta, setTipoConsulta] = useState<TipoConsulta>('CONSULTA_GENERAL');
   const [result, setResult] = useState<ResultadoCobertura | null>(null);
 
@@ -75,14 +75,26 @@ export default function ValidarCoberturaPage() {
             <h3 className="text-sm font-semibold text-ink-100">Datos de la póliza</h3>
           </div>
           <CardBody className="space-y-4">
-            <PatientPicker value={paciente} onChange={setPaciente} />
-            <Input label="Aseguradora" value={idAseguradora} onChange={(e) => setIdAseguradora(e.target.value)} />
+            <PatientPicker
+              value={paciente}
+              onChange={(p) => {
+                setPaciente(p);
+                if (p) setDocumento(p.numero_documento); // autocompleta el documento del paciente
+              }}
+            />
+            <Input
+              label="Aseguradora"
+              value={idAseguradora}
+              readOnly
+              className="cursor-not-allowed opacity-70"
+              leftIcon={<Lock className="h-4 w-4" />}
+            />
             <Input
               label="N° de documento del asegurado"
               value={documento}
               onChange={(e) => setDocumento(e.target.value)}
               placeholder="Ej. 12345678"
-              hint="Pruebas: 12345678 → 80% · CE123456 → 100%"
+              hint="Se completa con el documento del paciente. Pruebas: 12345678 → 80% · CE123456 → 100%"
             />
             <Select label="Tipo de consulta" value={tipoConsulta} onChange={(e) => setTipoConsulta(e.target.value as TipoConsulta)}>
               {TIPOS.map((t) => (
