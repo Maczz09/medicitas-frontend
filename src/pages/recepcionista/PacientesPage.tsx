@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
+  Avatar,
   Badge,
   Button,
   Card,
@@ -22,7 +23,6 @@ import {
   PageHeader,
   SkeletonRows,
   Tooltip,
-  Avatar,
 } from '@/components/ui';
 import { PacienteFormModal } from '@/features/pacientes/PacienteFormModal';
 import { PacienteEditModal } from '@/features/pacientes/PacienteEditModal';
@@ -47,7 +47,7 @@ export default function PacientesPage() {
   const [editing, setEditing] = useState<Paciente | null>(null);
   const [toggling, setToggling] = useState<Paciente | null>(null);
 
-  const { data, isLoading, isError } = usePacientesList({ q: debounced || undefined, page, limit: 8 });
+  const { data, isLoading, isError } = usePacientesList({ q: debounced || undefined, page, limit: 9 });
   const toggleMutation = useToggleEstadoPaciente();
 
   const pacientes = data?.data ?? [];
@@ -79,150 +79,130 @@ export default function PacientesPage() {
         }
       />
 
-      <Card className="overflow-hidden">
-        <div className="border-b border-white/[0.06] p-4">
-          <div className="max-w-md">
-            <Input
-              placeholder="Buscar por nombre, apellido o documento…"
-              leftIcon={<Search className="h-4 w-4" />}
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-        </div>
+      {/* Search bar */}
+      <div className="mb-5 max-w-md">
+        <Input
+          placeholder="Buscar por nombre, apellido o documento…"
+          leftIcon={<Search className="h-4 w-4" />}
+          value={search}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+        />
+      </div>
 
-        {isLoading ? (
-          <div className="p-4">
-            <SkeletonRows rows={6} />
-          </div>
-        ) : isError ? (
-          <EmptyState icon={Users} title="No se pudieron cargar los pacientes" description="Revisa tu conexión e inténtalo de nuevo." />
-        ) : pacientes.length === 0 ? (
-          <EmptyState
-            icon={Users}
-            title="Sin resultados"
-            description={debounced ? 'Ningún paciente coincide con tu búsqueda.' : 'Aún no hay pacientes registrados.'}
-            action={
-              <Button variant="secondary" leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
-                Registrar el primero
-              </Button>
-            }
-          />
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/[0.06] text-left text-xs text-ink-400">
-                    <th className="px-5 py-3 font-medium">Paciente</th>
-                    <th className="px-5 py-3 font-medium">Documento</th>
-                    <th className="hidden px-5 py-3 font-medium md:table-cell">Teléfono</th>
-                    <th className="hidden px-5 py-3 font-medium lg:table-cell">Registrado</th>
-                    <th className="px-5 py-3 font-medium">Estado</th>
-                    <th className="px-5 py-3 text-right font-medium">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pacientes.map((p, i) => (
-                    <motion.tr
-                      key={p.id_paciente}
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.03 }}
-                      className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]"
-                    >
-                      <td className="px-5 py-3">
-                        <div className="flex items-center gap-3">
-                          <Avatar name={`${p.nombre} ${p.apellido}`} size="sm" />
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-ink-100">
-                              {p.nombre} {p.apellido}
-                            </p>
-                            <p className="text-xs text-ink-500">{p.tipo_documento}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3 font-mono text-ink-200">{p.numero_documento}</td>
-                      <td className="hidden px-5 py-3 text-ink-300 md:table-cell">{p.telefono}</td>
-                      <td className="hidden px-5 py-3 text-ink-400 lg:table-cell">{fmtDate(p.created_at)}</td>
-                      <td className="px-5 py-3">
-                        {isActivo(p) ? (
-                          <Badge tone="success" dot>
-                            Activo
-                          </Badge>
-                        ) : (
-                          <Badge tone="neutral" dot>
-                            Inactivo
-                          </Badge>
-                        )}
-                      </td>
-                      <td className="px-5 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <Tooltip content="Ver detalle">
-                            <button
-                              onClick={() => navigate(`${base}/pacientes/${p.id_paciente}`)}
-                              className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
-                          <Tooltip content="Editar contacto">
-                            <button
-                              onClick={() => setEditing(p)}
-                              className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
-                          <Tooltip content={isActivo(p) ? 'Desactivar' : 'Activar'}>
-                            <button
-                              onClick={() => setToggling(p)}
-                              className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-rose-300"
-                            >
-                              <Power className="h-4 w-4" />
-                            </button>
-                          </Tooltip>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {meta && (
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5 text-sm">
-                <p className="text-xs text-ink-400">
-                  {meta.total} paciente{meta.total === 1 ? '' : 's'} · página {meta.page} de {meta.totalPages || 1}
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    leftIcon={<ChevronLeft className="h-4 w-4" />}
-                  >
-                    Anterior
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={!!meta && page >= meta.totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                    rightIcon={<ChevronRight className="h-4 w-4" />}
-                  >
-                    Siguiente
-                  </Button>
+      {isLoading ? (
+        <Card>
+          <div className="p-4"><SkeletonRows rows={6} /></div>
+        </Card>
+      ) : isError ? (
+        <EmptyState icon={Users} title="No se pudieron cargar los pacientes" description="Revisa tu conexión e inténtalo de nuevo." />
+      ) : pacientes.length === 0 ? (
+        <EmptyState
+          icon={Users}
+          title="Sin resultados"
+          description={debounced ? 'Ningún paciente coincide con tu búsqueda.' : 'Aún no hay pacientes registrados.'}
+          action={
+            <Button variant="secondary" leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
+              Registrar el primero
+            </Button>
+          }
+        />
+      ) : (
+        <>
+          {/* Card grid */}
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {pacientes.map((p, i) => (
+              <motion.div
+                key={p.id_paciente}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className="flex flex-col rounded-xl border border-white/[0.05] bg-white/[0.02] p-4 transition-colors hover:bg-white/[0.04]"
+              >
+                {/* Top: avatar + name + status */}
+                <div className="flex items-start gap-3">
+                  <Avatar name={`${p.nombre} ${p.apellido}`} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold text-ink-100">
+                      {p.nombre} {p.apellido}
+                    </p>
+                    <p className="mt-0.5 font-mono text-xs text-ink-400">
+                      {p.tipo_documento} {p.numero_documento}
+                    </p>
+                    {p.telefono && (
+                      <p className="mt-0.5 text-xs text-ink-500">{p.telefono}</p>
+                    )}
+                  </div>
+                  {isActivo(p) ? (
+                    <Badge tone="success" dot>Activo</Badge>
+                  ) : (
+                    <Badge tone="neutral" dot>Inactivo</Badge>
+                  )}
                 </div>
+
+                {/* Bottom: date + actions */}
+                <div className="mt-3 flex items-center gap-1 border-t border-white/[0.04] pt-3">
+                  <p className="flex-1 text-xs text-ink-600">
+                    Registrado {fmtDate(p.created_at)}
+                  </p>
+                  <Tooltip content="Ver detalle">
+                    <button
+                      onClick={() => navigate(`${base}/pacientes/${p.id_paciente}`)}
+                      className="rounded-lg p-1.5 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content="Editar contacto">
+                    <button
+                      onClick={() => setEditing(p)}
+                      className="rounded-lg p-1.5 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
+                  <Tooltip content={isActivo(p) ? 'Desactivar' : 'Activar'}>
+                    <button
+                      onClick={() => setToggling(p)}
+                      className="rounded-lg p-1.5 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-rose-300"
+                    >
+                      <Power className="h-4 w-4" />
+                    </button>
+                  </Tooltip>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {meta && (
+            <div className="mt-5 flex items-center justify-between gap-3">
+              <p className="text-xs text-ink-400">
+                {meta.total} paciente{meta.total === 1 ? '' : 's'} · página {meta.page} de {meta.totalPages || 1}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={page <= 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  leftIcon={<ChevronLeft className="h-4 w-4" />}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  disabled={!!meta && page >= meta.totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                  rightIcon={<ChevronRight className="h-4 w-4" />}
+                >
+                  Siguiente
+                </Button>
               </div>
-            )}
-          </>
-        )}
-      </Card>
+            </div>
+          )}
+        </>
+      )}
 
       <PacienteFormModal open={createOpen} onOpenChange={setCreateOpen} />
       <PacienteEditModal paciente={editing} open={!!editing} onOpenChange={(o) => !o && setEditing(null)} />

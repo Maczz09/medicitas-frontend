@@ -14,5 +14,6 @@ export interface Paginated<T> {
 export interface ApiErrorBody {
   codigo?: string;
   mensaje?: string;
+  meta?: Record<string, unknown>;
   correlationId?: string;
 }

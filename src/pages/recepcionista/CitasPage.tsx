@@ -9,6 +9,8 @@ import {
   RefreshCw,
   CalendarClock,
   XCircle,
+  Clock,
+  User,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
@@ -20,7 +22,6 @@ import {
   Modal,
   PageHeader,
   Select,
-  Tooltip,
 } from '@/components/ui';
 import { EstadoCitaBadge } from '@/components/domain/StatusBadge';
 import { PatientPicker } from '@/components/domain/PatientPicker';
@@ -29,7 +30,6 @@ import { useActivityStore, type RecentCita } from '@/store/activity.store';
 import { citasApi } from '@/api/citas.api';
 import { apiError } from '@/api/http';
 import { combinarFechaHora, generarSlots, hoyISO } from '@/lib/slots';
-import { fmtDateTime } from '@/lib/format';
 import type { Paciente } from '@/types';
 
 const SLOTS = generarSlots();
@@ -41,21 +41,32 @@ export default function CitasPage() {
   const { data: medicos } = useMedicos();
   const { citas, addCita, updateCita } = useActivityStore();
 
-  const [paciente, setPaciente] = useState<Paciente | null>(prefill);
-  const [idMedico, setIdMedico] = useState('');
+  // Agendar form state
+  const [agendarOpen, setAgendarOpen] = useState(!!prefill);
+  const [paciente, setPaciente]       = useState<Paciente | null>(prefill);
+  const [idMedico, setIdMedico]       = useState('');
   const [especialidad, setEspecialidad] = useState('');
-  const [fecha, setFecha] = useState(hoyISO());
-  const [hora, setHora] = useState('09:00');
+  const [fecha, setFecha]             = useState(hoyISO());
+  const [hora, setHora]               = useState('09:00');
 
-  const [cancelTarget, setCancelTarget] = useState<RecentCita | null>(null);
-  const [motivo, setMotivo] = useState('');
-  const [reprogTarget, setReprogTarget] = useState<RecentCita | null>(null);
-  const [reprogFecha, setReprogFecha] = useState(hoyISO());
-  const [reprogHora, setReprogHora] = useState('09:00');
+  // Cancel / reschedule
+  const [cancelTarget, setCancelTarget]   = useState<RecentCita | null>(null);
+  const [motivo, setMotivo]               = useState('');
+  const [reprogTarget, setReprogTarget]   = useState<RecentCita | null>(null);
+  const [reprogFecha, setReprogFecha]     = useState(hoyISO());
+  const [reprogHora, setReprogHora]       = useState('09:00');
 
   const medicoNombre = (id: string) => {
     const m = medicos?.find((x) => x.id_medico === id);
     return m ? `${m.nombre} ${m.apellido}` : id;
+  };
+
+  const resetForm = () => {
+    setPaciente(null);
+    setIdMedico('');
+    setEspecialidad('');
+    setFecha(hoyISO());
+    setHora('09:00');
   };
 
   const reservar = useMutation({
@@ -77,7 +88,8 @@ export default function CitasPage() {
         ts: Date.now(),
       });
       toast.success('Cita agendada correctamente');
-      setEspecialidad('');
+      resetForm();
+      setAgendarOpen(false);
     },
     onError: (err) => toast.error(apiError(err, 'No se pudo agendar la cita')),
   });
@@ -125,129 +137,178 @@ export default function CitasPage() {
 
   return (
     <div>
-      <PageHeader title="Citas" subtitle="Agenda y gestiona las citas de los pacientes" />
+      <PageHeader
+        title="Citas"
+        subtitle="Agenda y gestiona las citas de los pacientes"
+        actions={
+          <Button leftIcon={<CalendarPlus className="h-4 w-4" />} onClick={() => setAgendarOpen(true)}>
+            Agendar cita
+          </Button>
+        }
+      />
 
-      <div className="grid gap-5 lg:grid-cols-5">
-        {/* Formulario */}
-        <Card className="lg:col-span-2">
-          <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-4">
-            <CalendarPlus className="h-4 w-4 text-brand-300" />
-            <h3 className="text-sm font-semibold text-ink-100">Agendar cita</h3>
-          </div>
-          <CardBody className="space-y-4">
-            <PatientPicker value={paciente} onChange={setPaciente} />
-
-            <Select
-              label="Médico"
-              value={idMedico}
-              onChange={(e) => {
-                setIdMedico(e.target.value);
-                const m = medicos?.find((x) => x.id_medico === e.target.value);
-                if (m) setEspecialidad(m.especialidad);
-              }}
-            >
-              <option value="">Selecciona un médico…</option>
-              {medicos?.map((m) => (
-                <option key={m.id_medico} value={m.id_medico}>
-                  {m.nombre} {m.apellido} — {m.especialidad}
-                </option>
-              ))}
-            </Select>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Input label="Fecha" type="date" min={hoyISO()} value={fecha} onChange={(e) => setFecha(e.target.value)} />
-              <Select label="Hora" value={hora} onChange={(e) => setHora(e.target.value)}>
-                {SLOTS.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </Select>
-            </div>
-
-            <Input label="Especialidad" value={especialidad} onChange={(e) => setEspecialidad(e.target.value)} placeholder="Ej. Cardiología" />
-
-            <Button className="w-full" disabled={!canSubmit} loading={reservar.isPending} onClick={() => reservar.mutate()}>
-              Agendar cita
-            </Button>
+      {/* Appointment list */}
+      {citas.length === 0 ? (
+        <Card>
+          <CardBody>
+            <EmptyState
+              icon={CalendarDays}
+              title="Sin citas registradas"
+              description="Las citas que agendes aparecerán aquí con sus acciones."
+              action={
+                <Button leftIcon={<CalendarPlus className="h-4 w-4" />} onClick={() => setAgendarOpen(true)}>
+                  Agendar primera cita
+                </Button>
+              }
+            />
           </CardBody>
         </Card>
+      ) : (
+        <div className="space-y-3">
+          {citas.map((c, i) => {
+            const timeStr = c.fechaHora
+              ? new Date(c.fechaHora).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+              : '—';
+            const dateStr = c.fechaHora
+              ? new Date(c.fechaHora).toLocaleDateString('es-PE', { weekday: 'short', day: 'numeric', month: 'short' })
+              : '—';
+            const isActive = c.estado === 'En_Atencion';
 
-        {/* Citas recientes */}
-        <Card className="lg:col-span-3">
-          <div className="flex items-center gap-2 border-b border-white/[0.06] px-5 py-4">
-            <CalendarDays className="h-4 w-4 text-brand-300" />
-            <h3 className="text-sm font-semibold text-ink-100">Citas recientes</h3>
-          </div>
-          {citas.length === 0 ? (
-            <EmptyState icon={CalendarDays} title="Sin citas registradas" description="Las citas que agendes aparecerán aquí con sus acciones." />
-          ) : (
-            <ul className="divide-y divide-white/[0.04]">
-              {citas.map((c) => (
-                <motion.li
-                  key={c.idCita}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
+            return (
+              <motion.div
+                key={c.idCita}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.04 }}
+                className={`flex flex-wrap items-center gap-4 rounded-xl border p-4 transition-colors ${
+                  isActive
+                    ? 'border-emerald-500/25 bg-emerald-500/[0.06]'
+                    : 'border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]'
+                }`}
+              >
+                {/* Time bubble */}
+                <div
+                  className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl ${
+                    isActive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-brand-500/15 text-brand-300'
+                  }`}
                 >
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-medium text-ink-100">{c.pacienteNombre ?? c.idPaciente}</p>
-                      <EstadoCitaBadge estado={c.estado} />
-                    </div>
-                    <p className="mt-0.5 truncate text-xs text-ink-500">
-                      {c.especialidad} · {c.medicoNombre} · {fmtDateTime(c.fechaHora)}
-                    </p>
-                    <p className="mt-0.5 font-mono text-[11px] text-ink-600">{c.idCita}</p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    {c.estado === 'Pendiente' && (
-                      <>
-                        <Tooltip content="Registrar ingreso">
-                          <button
-                            onClick={() => ingreso.mutate(c.idCita)}
-                            className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-emerald-300"
-                          >
-                            <LogIn className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                        <Tooltip content="Reprogramar">
-                          <button
-                            onClick={() => setReprogTarget(c)}
-                            className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
-                          >
-                            <CalendarClock className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                      </>
-                    )}
-                    {(c.estado === 'Pendiente' || c.estado === 'En_Atencion') && (
-                      <Tooltip content="Cancelar">
-                        <button
-                          onClick={() => setCancelTarget(c)}
-                          className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-rose-300"
-                        >
-                          <XCircle className="h-4 w-4" />
-                        </button>
-                      </Tooltip>
-                    )}
-                    <Tooltip content="Actualizar estado">
-                      <button
-                        onClick={() => refrescar.mutate(c.idCita)}
-                        className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300"
-                      >
-                        <RefreshCw className="h-4 w-4" />
-                      </button>
-                    </Tooltip>
-                  </div>
-                </motion.li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="mt-0.5 text-sm font-bold leading-none">{timeStr}</span>
+                  <span className="mt-0.5 text-[9px] leading-none text-current/70 capitalize">{dateStr}</span>
+                </div>
 
-      {/* Modal cancelar */}
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-ink-100">{c.pacienteNombre ?? c.idPaciente}</p>
+                    <EstadoCitaBadge estado={c.estado} />
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-ink-500">
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {c.medicoNombre ?? 'Sin médico'}
+                    </span>
+                    {c.especialidad && <span>{c.especialidad}</span>}
+                  </div>
+                  <p className="mt-0.5 font-mono text-[10px] text-ink-600">{c.idCita}</p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex shrink-0 items-center gap-1">
+                  {c.estado === 'Pendiente' && (
+                    <>
+                      <ActionBtn
+                        icon={LogIn}
+                        label="Registrar ingreso"
+                        onClick={() => ingreso.mutate(c.idCita)}
+                        color="hover:text-emerald-300"
+                      />
+                      <ActionBtn
+                        icon={CalendarClock}
+                        label="Reprogramar"
+                        onClick={() => setReprogTarget(c)}
+                        color="hover:text-brand-300"
+                      />
+                    </>
+                  )}
+                  {(c.estado === 'Pendiente' || c.estado === 'En_Atencion') && (
+                    <ActionBtn
+                      icon={XCircle}
+                      label="Cancelar"
+                      onClick={() => setCancelTarget(c)}
+                      color="hover:text-rose-300"
+                    />
+                  )}
+                  <ActionBtn
+                    icon={RefreshCw}
+                    label="Actualizar estado"
+                    onClick={() => refrescar.mutate(c.idCita)}
+                    color="hover:text-brand-300"
+                  />
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Modal: Agendar cita ── */}
+      <Modal
+        open={agendarOpen}
+        onOpenChange={(o) => { if (!o) resetForm(); setAgendarOpen(o); }}
+        title="Agendar cita"
+        description="Completa los datos para reservar un turno"
+        size="md"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => { resetForm(); setAgendarOpen(false); }}>
+              Cancelar
+            </Button>
+            <Button disabled={!canSubmit} loading={reservar.isPending} onClick={() => reservar.mutate()}>
+              Agendar cita
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <PatientPicker value={paciente} onChange={setPaciente} />
+
+          <Select
+            label="Médico"
+            value={idMedico}
+            onChange={(e) => {
+              setIdMedico(e.target.value);
+              const m = medicos?.find((x) => x.id_medico === e.target.value);
+              if (m) setEspecialidad(m.especialidad);
+            }}
+          >
+            <option value="">Selecciona un médico…</option>
+            {medicos?.map((m) => (
+              <option key={m.id_medico} value={m.id_medico}>
+                {m.nombre} {m.apellido} — {m.especialidad}
+              </option>
+            ))}
+          </Select>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Fecha" type="date" min={hoyISO()} value={fecha} onChange={(e) => setFecha(e.target.value)} />
+            <Select label="Hora" value={hora} onChange={(e) => setHora(e.target.value)}>
+              {SLOTS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </Select>
+          </div>
+
+          <Input
+            label="Especialidad"
+            value={especialidad}
+            onChange={(e) => setEspecialidad(e.target.value)}
+            placeholder="Ej. Cardiología"
+          />
+        </div>
+      </Modal>
+
+      {/* ── Modal: Cancelar ── */}
       <Modal
         open={!!cancelTarget}
         onOpenChange={(o) => !o && setCancelTarget(null)}
@@ -255,9 +316,7 @@ export default function CitasPage() {
         size="sm"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setCancelTarget(null)}>
-              Volver
-            </Button>
+            <Button variant="ghost" onClick={() => setCancelTarget(null)}>Volver</Button>
             <Button variant="danger" loading={cancelar.isPending} onClick={() => cancelar.mutate()}>
               Cancelar cita
             </Button>
@@ -268,7 +327,7 @@ export default function CitasPage() {
         <Input value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Motivo…" />
       </Modal>
 
-      {/* Modal reprogramar */}
+      {/* ── Modal: Reprogramar ── */}
       <Modal
         open={!!reprogTarget}
         onOpenChange={(o) => !o && setReprogTarget(null)}
@@ -276,9 +335,7 @@ export default function CitasPage() {
         size="sm"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setReprogTarget(null)}>
-              Volver
-            </Button>
+            <Button variant="ghost" onClick={() => setReprogTarget(null)}>Volver</Button>
             <Button loading={reprogramar.isPending} onClick={() => reprogramar.mutate()}>
               Reprogramar
             </Button>
@@ -289,13 +346,33 @@ export default function CitasPage() {
           <Input label="Nueva fecha" type="date" min={hoyISO()} value={reprogFecha} onChange={(e) => setReprogFecha(e.target.value)} />
           <Select label="Nueva hora" value={reprogHora} onChange={(e) => setReprogHora(e.target.value)}>
             {SLOTS.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
+              <option key={s} value={s}>{s}</option>
             ))}
           </Select>
         </div>
       </Modal>
     </div>
+  );
+}
+
+function ActionBtn({
+  icon: Icon,
+  label,
+  onClick,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+  color: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={label}
+      className={`rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] ${color}`}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
   );
 }

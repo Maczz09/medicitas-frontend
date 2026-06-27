@@ -1,133 +1,230 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
+  ArrowRight,
   CalendarPlus,
+  Clock,
   CreditCard,
-  Pill,
+  Search,
   ShieldCheck,
-  Stethoscope,
   UserPlus,
-  Users,
-  CalendarDays,
 } from 'lucide-react';
-import { Card, StatCard, EmptyState, Button } from '@/components/ui';
-import { EstadoCitaBadge, EstadoCoberturaBadge } from '@/components/domain/StatusBadge';
-import { usePacientesList } from '@/features/pacientes/usePacientes';
-import { useMedicos } from '@/hooks/useMedicos';
+import { useQuery } from '@tanstack/react-query';
+import { Avatar, Button, Card, CardBody, EmptyState } from '@/components/ui';
+import { EstadoCitaBadge } from '@/components/domain/StatusBadge';
+import { pacientesApi } from '@/api/pacientes.api';
 import { useActivityStore } from '@/store/activity.store';
 import { useAuthStore } from '@/store/auth.store';
-import { fmtDateTime, fmtMoney } from '@/lib/format';
+import { useDebounce } from '@/hooks/useDebounce';
+import type { Paciente } from '@/types';
 
 const quickActions = [
-  { label: 'Nuevo paciente', icon: UserPlus, to: '/recepcion/pacientes' },
-  { label: 'Agendar cita', icon: CalendarPlus, to: '/recepcion/citas' },
-  { label: 'Validar cobertura', icon: ShieldCheck, to: '/recepcion/cobertura' },
-  { label: 'Registrar pago', icon: CreditCard, to: '/recepcion/pagos' },
+  { label: 'Nuevo paciente',  icon: UserPlus,    to: '/recepcion/pacientes', grad: 'from-brand-500 to-indigo-600' },
+  { label: 'Agendar cita',    icon: CalendarPlus, to: '/recepcion/citas',     grad: 'from-teal-500 to-emerald-600' },
+  { label: 'Validar seguro',  icon: ShieldCheck,  to: '/recepcion/cobertura', grad: 'from-amber-500 to-orange-600' },
+  { label: 'Registrar pago',  icon: CreditCard,   to: '/recepcion/pagos',     grad: 'from-violet-500 to-purple-600' },
 ];
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
-  const { data: pacientes } = usePacientesList({ page: 1, limit: 1 });
-  const { data: medicos } = useMedicos();
-  const { citas, coberturas } = useActivityStore();
+  const { citas } = useActivityStore();
+
+  const [q, setQ] = useState('');
+  const [dropOpen, setDropOpen] = useState(false);
+  const dq = useDebounce(q, 300);
+
+  const { data: searchData } = useQuery({
+    queryKey: ['pac-search-dash', dq],
+    queryFn: () => pacientesApi.list({ q: dq, page: 1, limit: 5 }),
+    enabled: dq.length >= 2,
+    staleTime: 30_000,
+  });
 
   const firstName = user?.nombre?.split(' ')[0] ?? '';
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
+
+  const enAtencion = citas.filter((c) => c.estado === 'En_Atencion');
+  const pendientes  = citas.filter((c) => c.estado === 'Pendiente');
+
+  const goToPaciente = (p: Paciente) => {
+    setQ('');
+    setDropOpen(false);
+    navigate(`/recepcion/pacientes/${p.id_paciente}`);
+  };
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="font-display text-2xl font-bold tracking-tight text-ink-100">
-          Hola, {firstName} 👋
-        </h1>
-        <p className="mt-1 text-sm text-ink-400">Este es el resumen de la recepción hoy.</p>
+    <div className="space-y-6">
+      {/* ── Hero: patient search ── */}
+      <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-brand-600/20 via-navy-850 to-navy-900 p-6 sm:p-8">
+        <p className="text-sm text-ink-400">{greeting},</p>
+        <h1 className="mt-0.5 font-display text-2xl font-bold text-ink-100">{firstName}</h1>
+        <p className="mt-1 text-sm text-ink-400">¿A quién estás atendiendo hoy?</p>
+
+        <div className="relative mt-4 max-w-lg">
+          <div className="relative">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-ink-500">
+              <Search className="h-4 w-4" />
+            </span>
+            <input
+              type="text"
+              placeholder="Buscar paciente por nombre o documento…"
+              value={q}
+              onChange={(e) => { setQ(e.target.value); setDropOpen(true); }}
+              onFocus={() => setDropOpen(true)}
+              onBlur={() => setTimeout(() => setDropOpen(false), 150)}
+              className="h-11 w-full rounded-xl border border-white/[0.12] bg-navy-900/80 pl-9 pr-4 text-sm text-ink-100 placeholder:text-ink-500 backdrop-blur-sm focus:border-brand-500/60 focus:outline-none focus:ring-1 focus:ring-brand-500/20"
+            />
+          </div>
+          <AnimatePresence>
+            {dropOpen && dq.length >= 2 && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 top-full z-50 mt-1.5 overflow-hidden rounded-xl border border-white/[0.08] bg-navy-850 shadow-2xl"
+              >
+                {!searchData?.data?.length ? (
+                  <div className="px-4 py-3 text-sm text-ink-400">Sin resultados para «{dq}»</div>
+                ) : (
+                  <ul>
+                    {searchData.data.map((p) => (
+                      <li key={p.id_paciente}>
+                        <button
+                          onMouseDown={() => goToPaciente(p)}
+                          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-white/[0.05]"
+                        >
+                          <Avatar name={`${p.nombre} ${p.apellido}`} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-ink-100">
+                              {p.nombre} {p.apellido}
+                            </p>
+                            <p className="text-xs text-ink-500">
+                              {p.tipo_documento} {p.numero_documento}
+                            </p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 shrink-0 text-ink-600" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard label="Pacientes" value={pacientes?.meta.total ?? '—'} icon={Users} tone="brand" index={0} />
-        <StatCard label="Médicos activos" value={medicos?.length ?? '—'} icon={Stethoscope} tone="success" index={1} />
-        <StatCard label="Citas recientes" value={citas.length} icon={CalendarDays} tone="info" index={2} />
-        <StatCard label="Coberturas" value={coberturas.length} icon={ShieldCheck} tone="warning" index={3} />
-      </div>
-
-      {/* Acciones rápidas */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {/* ── Quick actions ── */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {quickActions.map((a, i) => (
           <motion.button
             key={a.to}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 + i * 0.05 }}
-            whileHover={{ y: -3 }}
+            transition={{ delay: 0.08 + i * 0.05 }}
+            whileHover={{ y: -2, scale: 1.02 }}
             onClick={() => navigate(a.to)}
-            className="glass flex items-center gap-3 rounded-2xl p-4 text-left shadow-card transition-colors hover:bg-white/[0.04]"
+            className="glass flex flex-col items-center gap-3 rounded-2xl p-5 text-center shadow-card transition-all hover:bg-white/[0.05]"
           >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-gradient shadow-glow-sm">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${a.grad} shadow-glow-sm`}>
               <a.icon className="h-5 w-5 text-white" />
             </div>
-            <span className="text-sm font-medium text-ink-100">{a.label}</span>
+            <span className="text-sm font-medium leading-tight text-ink-100">{a.label}</span>
           </motion.button>
         ))}
       </div>
 
-      {/* Actividad reciente */}
-      <div className="mt-6 grid gap-5 lg:grid-cols-2">
-        <Card>
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
-            <h3 className="text-sm font-semibold text-ink-100">Citas recientes</h3>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/recepcion/citas')}>
-              Ver todas
-            </Button>
-          </div>
-          {citas.length === 0 ? (
-            <EmptyState icon={CalendarDays} title="Sin citas aún" description="Las citas que agendes aparecerán aquí." />
-          ) : (
-            <ul className="divide-y divide-white/[0.04]">
-              {citas.slice(0, 5).map((c) => (
-                <li key={c.idCita} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink-100">
-                      {c.pacienteNombre ?? c.idPaciente}
-                    </p>
-                    <p className="truncate text-xs text-ink-500">
-                      {c.especialidad} · {fmtDateTime(c.fechaHora)}
-                    </p>
-                  </div>
-                  <EstadoCitaBadge estado={c.estado} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+      {/* ── Patient queue ── */}
+      <div>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-ink-200">Cola de atención</h2>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/recepcion/citas')}>
+            Ver todas las citas
+          </Button>
+        </div>
 
-        <Card>
-          <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
-            <h3 className="text-sm font-semibold text-ink-100">Coberturas validadas</h3>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/recepcion/cobertura')}>
-              Ver todas
-            </Button>
+        {citas.length === 0 ? (
+          <Card>
+            <CardBody>
+              <EmptyState
+                icon={CalendarPlus}
+                title="Sin citas registradas"
+                description="Agenda una cita para empezar a atender pacientes."
+                action={
+                  <Button onClick={() => navigate('/recepcion/citas')} leftIcon={<CalendarPlus className="h-4 w-4" />}>
+                    Agendar cita
+                  </Button>
+                }
+              />
+            </CardBody>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {enAtencion.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-emerald-400/80">
+                  En atención ahora · {enAtencion.length}
+                </p>
+                <div className="space-y-2">
+                  {enAtencion.map((c, i) => (
+                    <QueueCard key={c.idCita} cita={c} index={i} active />
+                  ))}
+                </div>
+              </div>
+            )}
+            {pendientes.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-500">
+                  Próximas · {pendientes.length}
+                </p>
+                <div className="space-y-2">
+                  {pendientes.slice(0, 5).map((c, i) => (
+                    <QueueCard key={c.idCita} cita={c} index={i} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          {coberturas.length === 0 ? (
-            <EmptyState icon={Pill} title="Sin validaciones" description="Las validaciones de seguro aparecerán aquí." />
-          ) : (
-            <ul className="divide-y divide-white/[0.04]">
-              {coberturas.slice(0, 5).map((c) => (
-                <li key={c.idValidacion} className="flex items-center justify-between gap-3 px-5 py-3">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-ink-100">
-                      {c.pacienteNombre ?? c.idPaciente}
-                    </p>
-                    <p className="truncate text-xs text-ink-500">
-                      {c.porcentajeCobertura}% cobertura · {fmtMoney(0)}
-                    </p>
-                  </div>
-                  <EstadoCoberturaBadge estado={c.estadoCobertura} />
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
+        )}
       </div>
     </div>
+  );
+}
+
+function QueueCard({ cita, index, active }: { cita: any; index: number; active?: boolean }) {
+  const timeStr = cita.fechaHora
+    ? new Date(cita.fechaHora).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
+    : '—';
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -6 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.04 }}
+      className={`flex items-center gap-4 rounded-xl border p-4 transition-colors ${
+        active
+          ? 'border-emerald-500/25 bg-emerald-500/[0.06]'
+          : 'border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]'
+      }`}
+    >
+      <div
+        className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl ${
+          active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-brand-500/15 text-brand-300'
+        }`}
+      >
+        <Clock className="h-4 w-4" />
+        <span className="mt-0.5 text-[10px] font-bold leading-none">{timeStr}</span>
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate font-medium text-ink-100">{cita.pacienteNombre ?? cita.idPaciente}</p>
+        <p className="truncate text-xs text-ink-500">
+          {cita.especialidad}{cita.medicoNombre ? ` · ${cita.medicoNombre}` : ''}
+        </p>
+      </div>
+      <EstadoCitaBadge estado={cita.estado} />
+    </motion.div>
   );
 }

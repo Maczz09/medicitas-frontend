@@ -1,5 +1,3 @@
-version: '3.9'
-
 services:
   frontend:
     build:
@@ -9,9 +7,7 @@ services:
     restart: unless-stopped
     ports:
       - "8080:80"
-    networks:
-      - medicitas_shared_net
-
-networks:
-  medicitas_shared_net:
-    external: true
+    # host.docker.internal se resuelve automáticamente en Docker Desktop (Windows/Mac).
+    # En Linux este extra_hosts lo mapea al gateway del host.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -7,8 +7,10 @@ export const auditoriaApi = {
 
   /** Reconstruye el flujo completo de una operación por correlationId. */
   correlacion: (correlationId: string) =>
-    http.get<Traza[] | { trazas: Traza[] }>(`/auditoria/correlacion/${correlationId}`).then((r) => {
+    http.get<Traza[] | { trazas?: Traza[]; linea_tiempo?: Traza[] }>(`/auditoria/correlacion/${correlationId}`).then((r) => {
       const d = r.data;
-      return Array.isArray(d) ? d : (d.trazas ?? []);
+      if (Array.isArray(d)) return d;
+      // Soporta tanto { trazas: [...] } como el formato legado { linea_tiempo: [...] }
+      return (d.trazas ?? d.linea_tiempo ?? []);
     }),
 };

@@ -85,11 +85,35 @@ http.interceptors.response.use(
   },
 );
 
+/** Traduce mensajes de red de axios al español. */
+function traducirErrorRed(msg: string): string {
+  if (!msg) return msg;
+  if (msg === 'Network Error' || msg.toLowerCase().includes('network error'))
+    return 'Sin conexión con el servidor. Verifica tu red.';
+  if (msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('time out'))
+    return 'La solicitud tardó demasiado. Inténtalo de nuevo.';
+  if (msg.toLowerCase().includes('status code 401'))
+    return 'Sesión expirada. Inicia sesión de nuevo.';
+  if (msg.toLowerCase().includes('status code 403'))
+    return 'No tienes permiso para realizar esta acción.';
+  if (msg.toLowerCase().includes('status code 404'))
+    return 'El recurso solicitado no fue encontrado.';
+  if (msg.toLowerCase().includes('status code 5'))
+    return 'Error interno del servidor. Contacta al administrador.';
+  if (msg.toLowerCase().includes('status code'))
+    return 'Error de comunicación con el servidor.';
+  return msg;
+}
+
 /** Extrae un mensaje legible de cualquier error de API. */
 export function apiError(error: unknown, fallback = 'Ocurrió un error inesperado'): string {
   if (axios.isAxiosError(error)) {
     const body = error.response?.data as ApiErrorBody | undefined;
-    return body?.mensaje || body?.codigo || error.message || fallback;
+    // El backend siempre devuelve { mensaje, codigo } en español; priorizamos mensaje.
+    if (body?.mensaje) return body.mensaje;
+    if (body?.codigo && body.codigo !== 'ERROR_INTERNO') return body.codigo;
+    // Si no hay cuerpo de respuesta (timeout, sin conexión, CORS, etc.) traducimos.
+    return traducirErrorRed(error.message) || fallback;
   }
   if (error instanceof Error) return error.message;
   return fallback;

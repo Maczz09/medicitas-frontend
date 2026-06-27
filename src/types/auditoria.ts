@@ -1,3 +1,9 @@
+export interface TrazaActor {
+  id: string | null;
+  nombre: string | null;
+  rol: string | null;
+}
+
 export interface Traza {
   id: string;
   idEvento: string;
@@ -8,6 +14,7 @@ export interface Traza {
   correlationId: string | null;
   timestampOrigen: string | null;
   recibidoEn: string;
+  actor: TrazaActor | null;
 }
 
 export interface TrazasResponse {
