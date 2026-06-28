@@ -12,6 +12,8 @@ export interface ConfirmarPagoInput {
   tipoComprobante: TipoComprobante;
   idValidacionCobertura?: string | null;
   codigoAutorizacionSeguro?: string | null;
+  dniTitular?: string | null;
+  rucEmpresa?: string | null;
   observaciones?: string | null;
 }
 

@@ -9,6 +9,8 @@ import {
   Search,
   ShieldCheck,
   UserPlus,
+  Stethoscope,
+  ChevronRight,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { Avatar, Button, Card, CardBody, EmptyState } from '@/components/ui';
@@ -25,6 +27,34 @@ const quickActions = [
   { label: 'Validar seguro',  icon: ShieldCheck,  to: '/recepcion/cobertura', grad: 'from-amber-500 to-orange-600' },
   { label: 'Registrar pago',  icon: CreditCard,   to: '/recepcion/pagos',     grad: 'from-violet-500 to-purple-600' },
 ];
+
+const TODAY_START = new Date();
+TODAY_START.setHours(0, 0, 0, 0);
+const TODAY_END = new Date();
+TODAY_END.setHours(23, 59, 59, 999);
+
+function isToday(iso: string) {
+  const d = new Date(iso);
+  return d >= TODAY_START && d <= TODAY_END;
+}
+
+function formatTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('es-PE', { day: '2-digit', month: 'short' });
+}
+
+function initials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -46,8 +76,14 @@ export default function DashboardPage() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Buenos días' : hour < 18 ? 'Buenas tardes' : 'Buenas noches';
 
-  const enAtencion = citas.filter((c) => c.estado === 'En_Atencion');
-  const pendientes  = citas.filter((c) => c.estado === 'Pendiente');
+  // Solo mostrar citas activas de hoy ordenadas por hora
+  const citasActivas = citas
+    .filter((c) => ['En_Atencion', 'Pendiente'].includes(c.estado) && c.fechaHora && isToday(c.fechaHora))
+    .sort((a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime());
+
+  const enAtencion = citasActivas.filter((c) => c.estado === 'En_Atencion');
+  const pendientes  = citasActivas.filter((c) => c.estado === 'Pendiente');
+  const LIMIT = 5;
 
   const goToPaciente = (p: Paciente) => {
     setQ('');
@@ -58,7 +94,8 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* ── Hero: patient search ── */}
-      <div className="relative overflow-hidden rounded-2xl border border-white/[0.06] bg-gradient-to-br from-brand-600/20 via-navy-850 to-navy-900 p-6 sm:p-8">
+      {/* NO overflow-hidden aquí — recortaría el dropdown del buscador */}
+      <div className="relative rounded-2xl border border-white/[0.06] bg-gradient-to-br from-brand-600/20 via-navy-850 to-navy-900 p-6 sm:p-8">
         <p className="text-sm text-ink-400">{greeting},</p>
         <h1 className="mt-0.5 font-display text-2xl font-bold text-ink-100">{firstName}</h1>
         <p className="mt-1 text-sm text-ink-400">¿A quién estás atendiendo hoy?</p>
@@ -141,18 +178,21 @@ export default function DashboardPage() {
       {/* ── Patient queue ── */}
       <div>
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink-200">Cola de atención</h2>
+          <div>
+            <h2 className="text-sm font-semibold text-ink-200">Cola de atención</h2>
+            <p className="text-xs text-ink-500">Citas de hoy · {citasActivas.length} activas</p>
+          </div>
           <Button variant="ghost" size="sm" onClick={() => navigate('/recepcion/citas')}>
             Ver todas las citas
           </Button>
         </div>
 
-        {citas.length === 0 ? (
+        {citasActivas.length === 0 ? (
           <Card>
             <CardBody>
               <EmptyState
                 icon={CalendarPlus}
-                title="Sin citas registradas"
+                title="Sin citas para hoy"
                 description="Agenda una cita para empezar a atender pacientes."
                 action={
                   <Button onClick={() => navigate('/recepcion/citas')} leftIcon={<CalendarPlus className="h-4 w-4" />}>
@@ -165,28 +205,38 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-4">
             {enAtencion.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-emerald-400/80">
-                  En atención ahora · {enAtencion.length}
+              <section>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-400">
+                  En atención · {enAtencion.length}
                 </p>
                 <div className="space-y-2">
                   {enAtencion.map((c, i) => (
-                    <QueueCard key={c.idCita} cita={c} index={i} active />
+                    <QueueCard key={c.idCita} cita={c} position={i + 1} active />
                   ))}
                 </div>
-              </div>
+              </section>
             )}
+
             {pendientes.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-medium uppercase tracking-wide text-ink-500">
+              <section>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-500">
                   Próximas · {pendientes.length}
                 </p>
                 <div className="space-y-2">
-                  {pendientes.slice(0, 5).map((c, i) => (
-                    <QueueCard key={c.idCita} cita={c} index={i} />
+                  {pendientes.slice(0, LIMIT).map((c, i) => (
+                    <QueueCard key={c.idCita} cita={c} position={enAtencion.length + i + 1} />
                   ))}
+                  {pendientes.length > LIMIT && (
+                    <button
+                      onClick={() => navigate('/recepcion/citas')}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/[0.05] py-3 text-xs text-ink-500 transition-colors hover:bg-white/[0.03] hover:text-ink-300"
+                    >
+                      Ver {pendientes.length - LIMIT} citas más
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </div>
-              </div>
+              </section>
             )}
           </div>
         )}
@@ -195,36 +245,78 @@ export default function DashboardPage() {
   );
 }
 
-function QueueCard({ cita, index, active }: { cita: any; index: number; active?: boolean }) {
-  const timeStr = cita.fechaHora
-    ? new Date(cita.fechaHora).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })
-    : '—';
+function QueueCard({
+  cita,
+  position,
+  active,
+}: {
+  cita: any;
+  position: number;
+  active?: boolean;
+}) {
+  const navigate = useNavigate();
+  const nombre = cita.pacienteNombre ?? cita.idPaciente;
+  const timeStr = cita.fechaHora ? formatTime(cita.fechaHora) : '—';
+  const dateStr = cita.fechaHora ? formatDate(cita.fechaHora) : '';
+  const isNow = isToday(cita.fechaHora ?? '');
+
   return (
-    <motion.div
+    <motion.button
       initial={{ opacity: 0, x: -6 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ delay: index * 0.04 }}
-      className={`flex items-center gap-4 rounded-xl border p-4 transition-colors ${
+      transition={{ delay: position * 0.04 }}
+      onClick={() => navigate('/recepcion/citas')}
+      className={`group flex w-full items-center gap-4 rounded-xl border p-4 text-left transition-all ${
         active
-          ? 'border-emerald-500/25 bg-emerald-500/[0.06]'
+          ? 'border-emerald-500/25 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.09]'
           : 'border-white/[0.05] bg-white/[0.02] hover:bg-white/[0.04]'
       }`}
     >
+      {/* Posición en cola */}
       <div
-        className={`flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl ${
-          active ? 'bg-emerald-500/20 text-emerald-300' : 'bg-brand-500/15 text-brand-300'
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
+          active
+            ? 'bg-emerald-500/30 text-emerald-300'
+            : 'bg-white/[0.08] text-ink-500'
         }`}
       >
-        <Clock className="h-4 w-4" />
-        <span className="mt-0.5 text-[10px] font-bold leading-none">{timeStr}</span>
+        {position}
       </div>
+
+      {/* Avatar */}
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold ${
+          active
+            ? 'bg-emerald-500/20 text-emerald-200'
+            : 'bg-brand-500/15 text-brand-300'
+        }`}
+      >
+        {initials(nombre)}
+      </div>
+
+      {/* Info */}
       <div className="min-w-0 flex-1">
-        <p className="truncate font-medium text-ink-100">{cita.pacienteNombre ?? cita.idPaciente}</p>
-        <p className="truncate text-xs text-ink-500">
-          {cita.especialidad}{cita.medicoNombre ? ` · ${cita.medicoNombre}` : ''}
-        </p>
+        <p className="truncate text-sm font-semibold text-ink-100">{nombre}</p>
+        <div className="mt-0.5 flex items-center gap-2 text-xs text-ink-500">
+          <Stethoscope className="h-3 w-3 shrink-0" />
+          <span className="truncate">
+            {cita.especialidad}
+            {cita.medicoNombre ? ` · ${cita.medicoNombre}` : ''}
+          </span>
+        </div>
       </div>
-      <EstadoCitaBadge estado={cita.estado} />
-    </motion.div>
+
+      {/* Hora + estado */}
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <EstadoCitaBadge estado={cita.estado} />
+        <div className={`flex items-center gap-1 text-xs ${active ? 'text-emerald-400' : 'text-ink-400'}`}>
+          <Clock className="h-3 w-3" />
+          <span className="font-medium">{timeStr}</span>
+          {!isNow && <span className="text-ink-600">· {dateStr}</span>}
+        </div>
+      </div>
+
+      <ChevronRight className="h-4 w-4 shrink-0 text-ink-700 transition-colors group-hover:text-ink-400" />
+    </motion.button>
   );
 }

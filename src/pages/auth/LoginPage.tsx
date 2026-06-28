@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,10 +27,8 @@ type AuthErrorState = {
   unlockAt?: string;
 };
 
-function fmtCountdown(seconds: number) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return m > 0 ? `${m} min ${s.toString().padStart(2, '0')} seg` : `${s} seg`;
+function fmtHora(iso: string) {
+  return new Date(iso).toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function LoginPage() {
@@ -40,8 +38,6 @@ export default function LoginPage() {
 
   const [showPass, setShowPass] = useState(false);
   const [authErr, setAuthErr] = useState<AuthErrorState | null>(null);
-  const [countdown, setCountdown] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const {
     register,
@@ -50,27 +46,6 @@ export default function LoginPage() {
     setError,
     clearErrors,
   } = useForm<FormValues>({ resolver: zodResolver(schema) });
-
-  // Countdown ticker for ACCOUNT_LOCKED
-  useEffect(() => {
-    if (!authErr?.unlockAt) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      return;
-    }
-
-    const tick = () => {
-      const diff = Math.max(0, Math.ceil((new Date(authErr.unlockAt!).getTime() - Date.now()) / 1000));
-      setCountdown(diff);
-      if (diff === 0 && intervalRef.current) {
-        clearInterval(intervalRef.current);
-        setAuthErr(null);
-      }
-    };
-
-    tick();
-    intervalRef.current = setInterval(tick, 1000);
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [authErr?.unlockAt]);
 
   const mutation = useMutation({
     mutationFn: authApi.login,
@@ -119,7 +94,7 @@ export default function LoginPage() {
   };
 
   const isLocked = authErr?.code === 'ACCOUNT_LOCKED';
-  const isWrong = authErr?.code === 'WRONG_PASSWORD';
+  const isWrong  = authErr?.code === 'WRONG_PASSWORD';
 
   return (
     <AuthShell>
@@ -154,12 +129,13 @@ export default function LoginPage() {
               <div className="flex items-start gap-3">
                 <ShieldOff className="mt-0.5 h-5 w-5 shrink-0 text-rose-400" />
                 <div>
-                  <p className="text-sm font-semibold text-rose-300">Cuenta bloqueada</p>
+                  <p className="text-sm font-semibold text-rose-300">Esta cuenta está bloqueada</p>
                   <p className="mt-0.5 text-xs text-rose-400/80">
-                    Demasiados intentos fallidos. Podrás volver a intentarlo en:
-                  </p>
-                  <p className="mt-2 font-mono text-xl font-bold tabular-nums text-rose-300">
-                    {fmtCountdown(countdown)}
+                    Demasiados intentos fallidos. Se habilitará a las{' '}
+                    <span className="font-semibold text-rose-300">
+                      {authErr?.unlockAt ? fmtHora(authErr.unlockAt) : '—'}
+                    </span>
+                    . Puedes iniciar sesión con otra cuenta.
                   </p>
                 </div>
               </div>
@@ -211,7 +187,6 @@ export default function LoginPage() {
             placeholder="tucorreo@medicitas.pe"
             leftIcon={<Mail className="h-4 w-4" />}
             error={errors.email?.message}
-            disabled={isLocked}
             {...register('email')}
           />
 
@@ -224,7 +199,6 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 leftIcon={<Lock className="h-4 w-4" />}
                 error={errors.password?.message}
-                disabled={isLocked}
                 {...register('password')}
               />
               <button
@@ -252,10 +226,9 @@ export default function LoginPage() {
             size="lg"
             className="w-full"
             loading={mutation.isPending}
-            disabled={isLocked}
             leftIcon={<LogIn className="h-4 w-4" />}
           >
-            {isLocked ? `Bloqueado · ${fmtCountdown(countdown)}` : 'Entrar'}
+            Entrar
           </Button>
         </form>
       </motion.div>

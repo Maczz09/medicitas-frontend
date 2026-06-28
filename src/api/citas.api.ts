@@ -23,6 +23,9 @@ export const citasApi = {
   registrarIngreso: (id: string) =>
     http.post<Cita>(`/citas/${id}/ingreso`).then((r) => r.data),
 
+  revertirIngreso: (id: string) =>
+    http.patch<Cita>(`/citas/${id}/revertir-ingreso`).then((r) => r.data),
+
   completar: (id: string) =>
     http.patch<Cita>(`/citas/${id}/completar`).then((r) => r.data),
 };
