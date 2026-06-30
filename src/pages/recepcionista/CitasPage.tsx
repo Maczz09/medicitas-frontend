@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CalendarPlus,
@@ -32,11 +32,12 @@ import { PatientPicker } from '@/components/domain/PatientPicker';
 import { useMedicos } from '@/hooks/useMedicos';
 import { useActivityStore, type RecentCita } from '@/store/activity.store';
 import { citasApi } from '@/api/citas.api';
+import { medicosApi } from '@/api/medicos.api';
+import type { SlotsResponse } from '@/api/medicos.api';
 import { apiError } from '@/api/http';
-import { combinarFechaHora, generarSlots, hoyISO } from '@/lib/slots';
+import { combinarFechaHora, hoyISO } from '@/lib/slots';
+import { useServerSync } from '@/hooks/useServerSync';
 import type { Paciente } from '@/types';
-
-const SLOTS = generarSlots();
 
 type Filtro = 'todas' | 'hoy' | 'pendientes' | 'en_atencion' | 'finalizadas';
 
@@ -77,6 +78,8 @@ export default function CitasPage() {
   const { data: medicos } = useMedicos();
   const { citas, pagos, addCita, updateCita } = useActivityStore();
 
+  useServerSync();
+
   const [filtro, setFiltro] = useState<Filtro>('todas');
 
   const estaPagada = (idCita: string) =>
@@ -87,12 +90,12 @@ export default function CitasPage() {
   const [idMedico, setIdMedico]           = useState('');
   const [especialidad, setEspecialidad]   = useState('');
   const [fecha, setFecha]                 = useState(hoyISO());
-  const [hora, setHora]                   = useState('09:00');
+  const [hora, setHora]                   = useState('');
   const [cancelTarget, setCancelTarget]   = useState<RecentCita | null>(null);
   const [motivo, setMotivo]               = useState('');
   const [reprogTarget, setReprogTarget]   = useState<RecentCita | null>(null);
   const [reprogFecha, setReprogFecha]     = useState(hoyISO());
-  const [reprogHora, setReprogHora]       = useState('09:00');
+  const [reprogHora, setReprogHora]       = useState('');
 
   const medicoNombre = (id: string) => {
     const m = medicos?.find((x) => x.id_medico === id);
@@ -101,7 +104,7 @@ export default function CitasPage() {
 
   const resetForm = () => {
     setPaciente(null); setIdMedico(''); setEspecialidad('');
-    setFecha(hoyISO()); setHora('09:00');
+    setFecha(hoyISO()); setHora('');
   };
 
   const reservar = useMutation({
@@ -281,7 +284,7 @@ export default function CitasPage() {
         footer={
           <>
             <Button variant="ghost" onClick={() => { resetForm(); setAgendarOpen(false); }}>Cancelar</Button>
-            <Button disabled={!canSubmit} loading={reservar.isPending} onClick={() => reservar.mutate()}>
+            <Button disabled={!canSubmit || reservar.isPending} loading={reservar.isPending} onClick={() => reservar.mutate()}>
               Agendar cita
             </Button>
           </>
@@ -294,6 +297,7 @@ export default function CitasPage() {
             value={idMedico}
             onChange={(e) => {
               setIdMedico(e.target.value);
+              setHora('');
               const m = medicos?.find((x) => x.id_medico === e.target.value);
               if (m) setEspecialidad(m.especialidad);
             }}
@@ -305,12 +309,16 @@ export default function CitasPage() {
               </option>
             ))}
           </Select>
-          <div className="grid grid-cols-2 gap-3">
-            <Input label="Fecha" type="date" min={hoyISO()} value={fecha} onChange={(e) => setFecha(e.target.value)} />
-            <Select label="Hora" value={hora} onChange={(e) => setHora(e.target.value)}>
-              {SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
-            </Select>
-          </div>
+          <Input
+            label="Fecha"
+            type="date"
+            min={hoyISO()}
+            value={fecha}
+            onChange={(e) => { setFecha(e.target.value); setHora(''); }}
+          />
+          {idMedico && (
+            <SlotPicker idMedico={idMedico} fecha={fecha} selectedHora={hora} onSelect={setHora} />
+          )}
           <Input
             label="Especialidad"
             value={especialidad}
@@ -342,21 +350,38 @@ export default function CitasPage() {
       {/* Modal: Reprogramar */}
       <Modal
         open={!!reprogTarget}
-        onOpenChange={(o) => !o && setReprogTarget(null)}
+        onOpenChange={(o) => { if (!o) { setReprogTarget(null); setReprogHora(''); } }}
         title="Reprogramar cita"
-        size="sm"
+        size="md"
         footer={
           <>
-            <Button variant="ghost" onClick={() => setReprogTarget(null)}>Volver</Button>
-            <Button loading={reprogramar.isPending} onClick={() => reprogramar.mutate()}>Reprogramar</Button>
+            <Button variant="ghost" onClick={() => { setReprogTarget(null); setReprogHora(''); }}>Volver</Button>
+            <Button
+              disabled={!reprogHora || reprogramar.isPending}
+              loading={reprogramar.isPending}
+              onClick={() => reprogramar.mutate()}
+            >
+              Reprogramar
+            </Button>
           </>
         }
       >
-        <div className="grid grid-cols-2 gap-3">
-          <Input label="Nueva fecha" type="date" min={hoyISO()} value={reprogFecha} onChange={(e) => setReprogFecha(e.target.value)} />
-          <Select label="Nueva hora" value={reprogHora} onChange={(e) => setReprogHora(e.target.value)}>
-            {SLOTS.map((s) => <option key={s} value={s}>{s}</option>)}
-          </Select>
+        <div className="space-y-4">
+          <Input
+            label="Nueva fecha"
+            type="date"
+            min={hoyISO()}
+            value={reprogFecha}
+            onChange={(e) => { setReprogFecha(e.target.value); setReprogHora(''); }}
+          />
+          {reprogTarget && (
+            <SlotPicker
+              idMedico={reprogTarget.idMedico}
+              fecha={reprogFecha}
+              selectedHora={reprogHora}
+              onSelect={setReprogHora}
+            />
+          )}
         </div>
       </Modal>
     </div>
@@ -535,5 +560,182 @@ function ActionBtn({
     >
       <Icon className="h-4 w-4" />
     </button>
+  );
+}
+
+// ── SlotPicker ────────────────────────────────────────────────────────────────
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function SlotPicker({
+  idMedico, fecha, selectedHora, onSelect,
+}: {
+  idMedico: string;
+  fecha: string;
+  selectedHora: string;
+  onSelect: (hora: string) => void;
+}) {
+  const { data, isLoading } = useQuery<SlotsResponse>({
+    queryKey: ['medico-slots', idMedico, fecha],
+    queryFn: () => medicosApi.slots(idMedico, fecha),
+    enabled: !!idMedico && !!fecha,
+    staleTime: 60_000,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.02] py-6 text-xs text-ink-500">
+        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+        Cargando disponibilidad…
+      </div>
+    );
+  }
+
+  if (!data?.tieneHorario) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] py-5 text-xs text-amber-400">
+        <CalendarDays className="h-4 w-4" />
+        El médico no atiende este día
+      </div>
+    );
+  }
+
+  // Past-slot filtering — only for today
+  const isToday = fecha === todayISO();
+  const duracion = data.horario?.duracion_cita_min ?? 30;
+
+  const isSlotPast = (hora: string): boolean => {
+    if (!isToday) return false;
+    const now = new Date();
+    const [h, m] = hora.split(':').map(Number);
+    const slotStart = new Date(now);
+    slotStart.setHours(h, m, 0, 0);
+    // Slot expires when less than 10 min of the slot window remain
+    const expiresAt = new Date(slotStart.getTime() + (duracion - 10) * 60_000);
+    return now >= expiresAt;
+  };
+
+  const libres    = data.slots.filter((s) => s.estado === 'libre' && !isSlotPast(s.hora)).length;
+  const ocupados  = data.slots.filter((s) => s.estado === 'ocupado').length;
+  const bloqueados = data.slots.filter((s) => s.estado === 'bloqueado').length;
+  const pasados   = isToday ? data.slots.filter((s) => isSlotPast(s.hora)).length : 0;
+
+  if (libres === 0 && data.slots.length > 0) {
+    return (
+      <div className="flex items-center justify-center gap-2 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] py-5 text-xs text-rose-400">
+        <XCircle className="h-4 w-4" />
+        Sin turnos disponibles para este día
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {/* Header resumen */}
+      <div className="flex flex-wrap items-center gap-3 text-[10px] text-ink-500">
+        <span className="flex items-center gap-1">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          {libres} libre{libres !== 1 ? 's' : ''}
+        </span>
+        {ocupados > 0 && (
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-rose-500" />
+            {ocupados} ocupado{ocupados !== 1 ? 's' : ''}
+          </span>
+        )}
+        {bloqueados > 0 && (
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            {bloqueados} bloqueado{bloqueados !== 1 ? 's' : ''}
+          </span>
+        )}
+        {pasados > 0 && (
+          <span className="flex items-center gap-1">
+            <span className="h-2 w-2 rounded-full bg-white/20" />
+            {pasados} pasado{pasados !== 1 ? 's' : ''}
+          </span>
+        )}
+        {data.horario && (
+          <span className="ml-auto text-ink-600">
+            {data.horario.hora_inicio}–{data.horario.hora_fin} · {duracion} min/turno
+          </span>
+        )}
+      </div>
+
+      {/* Bloqueos activos */}
+      {data.bloqueos.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {data.bloqueos.map((b) => (
+            <span
+              key={b.id_bloqueo}
+              className="flex items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] text-amber-400"
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+              {b.motivo}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Grid de slots — scrollable cuando hay muchos */}
+      <div className="max-h-52 overflow-y-auto rounded-lg pr-0.5">
+        <div className="grid grid-cols-4 gap-1.5 sm:grid-cols-5">
+          {data.slots.map((slot) => {
+            const isLibre     = slot.estado === 'libre';
+            const isBloqueado = slot.estado === 'bloqueado';
+            const isOcupado   = slot.estado === 'ocupado';
+            const isPast      = isSlotPast(slot.hora);
+            const isSelected  = slot.hora === selectedHora;
+            const isDisabled  = !isLibre || isPast;
+
+            const tooltipText = isPast
+              ? 'Turno ya pasado'
+              : isBloqueado
+              ? `Bloqueado: ${slot.motivoBloqueo}`
+              : isOcupado
+              ? `Ocupado — ${slot.paciente ?? 'Paciente'}`
+              : 'Disponible';
+
+            return (
+              <Tooltip key={slot.hora} content={tooltipText}>
+                <button
+                  type="button"
+                  disabled={isDisabled}
+                  onClick={() => !isDisabled && onSelect(slot.hora)}
+                  className={`relative rounded-lg px-1.5 py-2 text-xs font-semibold transition-all ${
+                    isSelected
+                      ? 'bg-brand-600 text-white shadow-md ring-2 ring-brand-400/40'
+                      : isPast
+                      ? 'cursor-not-allowed border border-white/[0.04] bg-transparent text-ink-700 line-through'
+                      : isLibre
+                      ? 'border border-emerald-500/20 bg-emerald-500/[0.08] text-emerald-300 hover:border-emerald-500/40 hover:bg-emerald-500/20'
+                      : isBloqueado
+                      ? 'cursor-not-allowed border border-amber-500/10 bg-amber-500/[0.05] text-amber-500/40'
+                      : 'cursor-not-allowed border border-rose-500/10 bg-rose-500/[0.05] text-rose-500/40'
+                  }`}
+                >
+                  {slot.hora}
+                  {isOcupado && !isPast && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-rose-500 ring-1 ring-navy-950" />
+                  )}
+                  {isBloqueado && !isPast && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500 ring-1 ring-navy-950" />
+                  )}
+                </button>
+              </Tooltip>
+            );
+          })}
+        </div>
+      </div>
+
+      {selectedHora && (
+        <p className="text-[11px] text-brand-400">
+          Turno seleccionado: <span className="font-semibold">{selectedHora}</span>
+        </p>
+      )}
+    </div>
   );
 }

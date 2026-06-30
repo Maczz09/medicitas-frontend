@@ -26,4 +26,24 @@ export const medicosApi = {
 
   registrarBloqueo: (id: string, body: BloqueoAgendaInput) =>
     http.post<{ data: unknown }>(`/medicos/${id}/bloqueos`, body).then((r) => r.data.data),
+
+  slots: (id: string, fecha: string) =>
+    http.get<{ data: SlotsResponse }>(`/medicos/${id}/slots`, { params: { fecha } }).then((r) => r.data.data),
 };
+
+export interface SlotInfo {
+  hora: string;
+  fechaHora: string;
+  estado: 'libre' | 'ocupado' | 'bloqueado';
+  motivoBloqueo: string | null;
+  paciente: string | null;
+}
+
+export interface SlotsResponse {
+  fecha: string;
+  diaSemana: number;
+  tieneHorario: boolean;
+  horario: { hora_inicio: string; hora_fin: string; duracion_cita_min: number } | null;
+  bloqueos: { id_bloqueo: string; fecha_inicio: string; fecha_fin: string; motivo: string }[];
+  slots: SlotInfo[];
+}

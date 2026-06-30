@@ -34,7 +34,7 @@ export function AppLayout() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setMobileNav(false)}
-              className="fixed inset-0 z-40 bg-navy-950/70 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 cursor-pointer bg-navy-950/70 backdrop-blur-sm lg:hidden"
             />
             <motion.aside
               initial={{ x: -288 }}
@@ -45,7 +45,7 @@ export function AppLayout() {
             >
               <button
                 onClick={() => setMobileNav(false)}
-                className="absolute right-3 top-4 rounded-lg p-1.5 text-ink-400 hover:bg-white/[0.06]"
+                className="absolute right-3 top-4 z-10 rounded-lg p-1.5 text-ink-400 hover:bg-white/[0.06]"
                 aria-label="Cerrar menú"
               >
                 <X className="h-4 w-4" />

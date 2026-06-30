@@ -19,6 +19,7 @@ import { pacientesApi } from '@/api/pacientes.api';
 import { useActivityStore } from '@/store/activity.store';
 import { useAuthStore } from '@/store/auth.store';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useServerSync } from '@/hooks/useServerSync';
 import type { Paciente } from '@/types';
 
 const quickActions = [
@@ -60,6 +61,8 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
   const { citas } = useActivityStore();
+
+  useServerSync();
 
   const [q, setQ] = useState('');
   const [dropOpen, setDropOpen] = useState(false);

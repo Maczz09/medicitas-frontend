@@ -15,6 +15,8 @@ import { PatientPicker } from '@/components/domain/PatientPicker';
 import { hclApi } from '@/api/hcl.api';
 import { apiError } from '@/api/http';
 import { useActivityStore } from '@/store/activity.store';
+import { useAuthStore } from '@/store/auth.store';
+import { useServerSync } from '@/hooks/useServerSync';
 import type { Paciente, PrescripcionInput, ResultadoEncuentro } from '@/types';
 
 interface PrescRow extends PrescripcionInput {
@@ -32,8 +34,11 @@ const nuevaPresc = (): PrescRow => ({
 const STEPS = ['Paciente y cita', 'Diagnóstico', 'Prescripciones'];
 
 export default function AtencionPage() {
+  useServerSync();
+  const user = useAuthStore((s) => s.user);
   const citas = useActivityStore((s) => s.citas);
-  const enAtencion = citas.filter((c) => c.estado === 'En_Atencion');
+  const misCitas   = user?.idMedico ? citas.filter((c) => c.idMedico === user.idMedico) : citas;
+  const enAtencion = misCitas.filter((c) => c.estado === 'En_Atencion');
 
   const [step, setStep]             = useState(0);
   const [paciente, setPaciente]     = useState<Paciente | null>(null);

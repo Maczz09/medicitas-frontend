@@ -28,4 +28,9 @@ export const hclApi = {
     http
       .get<HistoricoEncuentros>(`/historias-clinicas/${idPaciente}/encuentros`, { params })
       .then((r) => r.data),
+
+  actualizarExpediente: (idPaciente: string, body: { grupoSanguineo?: string; alergias?: string[] }) =>
+    http
+      .patch(`/historias-clinicas/${idPaciente}/expediente`, body)
+      .then((r) => r.data),
 };

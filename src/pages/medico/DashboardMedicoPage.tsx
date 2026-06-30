@@ -12,6 +12,7 @@ import { Button, Card, CardBody, EmptyState } from '@/components/ui';
 import { EstadoCitaBadge } from '@/components/domain/StatusBadge';
 import { useActivityStore } from '@/store/activity.store';
 import { useAuthStore } from '@/store/auth.store';
+import { useServerSync } from '@/hooks/useServerSync';
 import { fmtDateTime } from '@/lib/format';
 
 const navLinks = [
@@ -26,8 +27,12 @@ export default function DashboardMedicoPage() {
   const user = useAuthStore((s) => s.user);
   const { citas, recetas } = useActivityStore();
 
-  const enAtencion = citas.filter((c) => c.estado === 'En_Atencion');
-  const pendientes  = citas.filter((c) => c.estado === 'Pendiente');
+  useServerSync();
+
+  // Solo las citas del médico logueado
+  const misCitas   = user?.idMedico ? citas.filter((c) => c.idMedico === user.idMedico) : citas;
+  const enAtencion = misCitas.filter((c) => c.estado === 'En_Atencion');
+  const pendientes  = misCitas.filter((c) => c.estado === 'Pendiente');
 
   const nombre = user?.nombre ?? '';
   const hour = new Date().getHours();
@@ -48,7 +53,7 @@ export default function DashboardMedicoPage() {
           { label: 'En atención',     value: enAtencion.length, cls: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/20' },
           { label: 'Pendientes',      value: pendientes.length,  cls: 'text-brand-300 bg-brand-500/10 border-brand-500/20' },
           { label: 'Recetas emitidas',value: recetas.length,     cls: 'text-violet-300 bg-violet-500/10 border-violet-500/20' },
-          { label: 'Total citas',     value: citas.length,       cls: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
+          { label: 'Total citas',     value: misCitas.length,    cls: 'text-amber-300 bg-amber-500/10 border-amber-500/20' },
         ].map((s, i) => (
           <motion.div
             key={s.label}

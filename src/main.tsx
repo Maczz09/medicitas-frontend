@@ -11,8 +11,10 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
+      refetchIntervalInBackground: false, // pausa cuando el tab no está visible
       staleTime: 30_000,
+      refetchInterval: 20_000,
     },
   },
 });

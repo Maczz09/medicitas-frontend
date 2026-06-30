@@ -8,12 +8,13 @@ export function generarSlots(): string[] {
   return slots;
 }
 
-/** Combina fecha (YYYY-MM-DD) y hora (HH:MM) locales en un ISO string. */
+/** Combina fecha (YYYY-MM-DD) y hora (HH:MM) en datetime local sin conversión UTC. */
 export function combinarFechaHora(fecha: string, hora: string): string {
-  return new Date(`${fecha}T${hora}:00`).toISOString();
+  return `${fecha}T${hora}:00`;
 }
 
-/** Fecha de hoy en formato YYYY-MM-DD (para el atributo min de inputs date). */
+/** Fecha de hoy en formato YYYY-MM-DD usando hora local (no UTC). */
 export function hoyISO(): string {
-  return new Date().toISOString().split('T')[0];
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

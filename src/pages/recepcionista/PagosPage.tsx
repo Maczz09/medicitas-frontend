@@ -29,6 +29,7 @@ import { pagosApi } from '@/api/pagos.api';
 import { facturacionApi } from '@/api/facturacion.api';
 import { apiError } from '@/api/http';
 import { useActivityStore, type RecentPago } from '@/store/activity.store';
+import { useServerSync } from '@/hooks/useServerSync';
 import { fmtMoney } from '@/lib/format';
 import type { MetodoPago, TipoComprobante } from '@/types';
 
@@ -44,6 +45,7 @@ function fmtCitaFecha(fechaHora?: string) {
 }
 
 export default function PagosPage() {
+  useServerSync();
   const { citas, coberturas, pagos, addPago, updatePago } = useActivityStore();
 
   // Citas cobrables: estado válido Y sin pago activo (no reversado)
