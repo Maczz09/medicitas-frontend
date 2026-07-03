@@ -3,9 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { citasApi } from '@/api/citas.api';
 import { pagosApi } from '@/api/pagos.api';
 import { useActivityStore } from '@/store/activity.store';
+import { useAuthStore } from '@/store/auth.store';
 import type { EstadoCita } from '@/types';
 
 export function useServerSync() {
+  const rol = useAuthStore((s) => s.user?.rol);
+  // GET /pagos está restringido a Recepcionista/Auditor en el backend — un
+  // Médico que la consultara recibiría 403 en cada refetch. Con el stream de
+  // tiempo real (SSE) entregando eventos correctamente, invalidateQueries()
+  // se dispara en cada evento del sistema y refetch-eaba esta consulta
+  // prohibida en cascada para cualquier médico con estas páginas abiertas.
+  const puedeVerPagos = rol === 'Recepcionista' || rol === 'Auditor';
+
   const citasQuery = useQuery({
     queryKey: ['server-sync-citas'],
     queryFn: () => citasApi.list({ page: 1, limit: 100 }),
@@ -18,6 +27,7 @@ export function useServerSync() {
     queryFn: () => pagosApi.list({ page: 1, limit: 100 }),
     staleTime: 30_000,
     refetchOnWindowFocus: true,
+    enabled: puedeVerPagos,
   });
 
   useEffect(() => {

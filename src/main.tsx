@@ -10,7 +10,16 @@ import './index.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 1,
+      // Nunca reintentar 4xx (auth/validación/permisos) — no son fallas
+      // transitorias y reintentarlas solo genera ruido. Con el stream SSE
+      // disparando invalidateQueries() en cada evento del sistema, una sola
+      // consulta con rol insuficiente podía terminar reintentándose en
+      // cascada indefinidamente.
+      retry: (failureCount, error: any) => {
+        const status = error?.response?.status;
+        if (status && status >= 400 && status < 500) return false;
+        return failureCount < 1;
+      },
       refetchOnWindowFocus: true,
       refetchIntervalInBackground: false,
       staleTime: 30_000,
