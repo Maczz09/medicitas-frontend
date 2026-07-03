@@ -5,22 +5,18 @@ import { pagosApi } from '@/api/pagos.api';
 import { useActivityStore } from '@/store/activity.store';
 import type { EstadoCita } from '@/types';
 
-const SYNC_INTERVAL = 20_000; // 20 segundos
-
 export function useServerSync() {
   const citasQuery = useQuery({
     queryKey: ['server-sync-citas'],
     queryFn: () => citasApi.list({ page: 1, limit: 100 }),
-    staleTime: 0,
-    refetchInterval: SYNC_INTERVAL,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
 
   const pagosQuery = useQuery({
     queryKey: ['server-sync-pagos'],
     queryFn: () => pagosApi.list({ page: 1, limit: 100 }),
-    staleTime: 0,
-    refetchInterval: SYNC_INTERVAL,
+    staleTime: 30_000,
     refetchOnWindowFocus: true,
   });
 

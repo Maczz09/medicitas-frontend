@@ -12,9 +12,9 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: true,
-      refetchIntervalInBackground: false, // pausa cuando el tab no está visible
+      refetchIntervalInBackground: false,
       staleTime: 30_000,
-      refetchInterval: 20_000,
+      refetchInterval: false,
     },
   },
 });

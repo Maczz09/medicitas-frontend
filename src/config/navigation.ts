@@ -1,4 +1,5 @@
 import {
+  Activity,
   Bell,
   CalendarClock,
   CalendarDays,
@@ -50,6 +51,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: 'Médicos', to: '/auditor/medicos', icon: Stethoscope },
     { label: 'Usuarios', to: '/auditor/usuarios', icon: UserCog },
     { label: 'Notificaciones', to: '/auditor/notificaciones', icon: Bell },
-    { label: 'Trazas', to: '/auditor/trazas', icon: ScrollText },
+    { label: 'Eventos Auditados (Trazas)', to: '/auditor/trazas', icon: ScrollText },
+    { label: 'Monitoreo de Sistema', to: '/auditor/monitoreo', icon: Activity },
   ],
 };

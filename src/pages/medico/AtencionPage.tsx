@@ -12,6 +12,7 @@ import {
   Select,
 } from '@/components/ui';
 import { PatientPicker } from '@/components/domain/PatientPicker';
+import { fmtDateTime } from '@/lib/format';
 import { hclApi } from '@/api/hcl.api';
 import { apiError } from '@/api/http';
 import { useActivityStore } from '@/store/activity.store';
@@ -223,7 +224,7 @@ export default function AtencionPage() {
                         <option value="">Selecciona una cita…</option>
                         {enAtencion.map((c) => (
                           <option key={c.idCita} value={c.idCita}>
-                            {c.pacienteNombre ?? c.idCita} · {c.especialidad}
+                            {c.pacienteNombre ?? c.idCita} · {c.especialidad} · {fmtDateTime(c.fechaHora)} · {c.idCita}
                           </option>
                         ))}
                       </Select>

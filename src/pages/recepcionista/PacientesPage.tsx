@@ -21,6 +21,7 @@ import {
   EmptyState,
   Input,
   PageHeader,
+  Select,
   SkeletonRows,
   Tooltip,
 } from '@/components/ui';
@@ -32,7 +33,7 @@ import { apiError } from '@/api/http';
 import { fmtDate } from '@/lib/format';
 import { useAuthStore } from '@/store/auth.store';
 import { basePathForRole } from '@/lib/roles';
-import type { Paciente } from '@/types';
+import type { EstadoPacienteFiltro, Paciente } from '@/types';
 
 const isActivo = (p: Paciente) => p.activo === 1 || p.activo === true;
 
@@ -40,6 +41,7 @@ export default function PacientesPage() {
   const navigate = useNavigate();
   const base = basePathForRole(useAuthStore((s) => s.user?.rol));
   const [search, setSearch] = useState('');
+  const [estado, setEstado] = useState<EstadoPacienteFiltro>('activo');
   const [page, setPage] = useState(1);
   const debounced = useDebounce(search, 350);
 
@@ -47,7 +49,7 @@ export default function PacientesPage() {
   const [editing, setEditing] = useState<Paciente | null>(null);
   const [toggling, setToggling] = useState<Paciente | null>(null);
 
-  const { data, isLoading, isError } = usePacientesList({ q: debounced || undefined, page, limit: 9 });
+  const { data, isLoading, isError } = usePacientesList({ q: debounced || undefined, page, limit: 9, estado });
   const toggleMutation = useToggleEstadoPaciente();
 
   const pacientes = data?.data ?? [];
@@ -79,14 +81,27 @@ export default function PacientesPage() {
         }
       />
 
-      {/* Search bar */}
-      <div className="mb-5 max-w-md">
-        <Input
-          placeholder="Buscar por nombre, apellido o documento…"
-          leftIcon={<Search className="h-4 w-4" />}
-          value={search}
-          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-        />
+      {/* Search bar + filtro de estado */}
+      <div className="mb-5 flex flex-wrap items-end gap-3">
+        <div className="max-w-md flex-1">
+          <Input
+            placeholder="Buscar por nombre, apellido o documento…"
+            leftIcon={<Search className="h-4 w-4" />}
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
+        </div>
+        <div className="w-44">
+          <Select
+            label="Estado"
+            value={estado}
+            onChange={(e) => { setEstado(e.target.value as EstadoPacienteFiltro); setPage(1); }}
+          >
+            <option value="activo">Activos</option>
+            <option value="inactivo">Inactivos</option>
+            <option value="todos">Todos</option>
+          </Select>
+        </div>
       </div>
 
       {isLoading ? (
@@ -99,7 +114,15 @@ export default function PacientesPage() {
         <EmptyState
           icon={Users}
           title="Sin resultados"
-          description={debounced ? 'Ningún paciente coincide con tu búsqueda.' : 'Aún no hay pacientes registrados.'}
+          description={
+            debounced
+              ? 'Ningún paciente coincide con tu búsqueda.'
+              : estado === 'inactivo'
+                ? 'No hay pacientes inactivos.'
+                : estado === 'todos'
+                  ? 'Aún no hay pacientes registrados.'
+                  : 'No hay pacientes activos. Prueba el filtro "Inactivos" o "Todos".'
+          }
           action={
             <Button variant="secondary" leftIcon={<UserPlus className="h-4 w-4" />} onClick={() => setCreateOpen(true)}>
               Registrar el primero

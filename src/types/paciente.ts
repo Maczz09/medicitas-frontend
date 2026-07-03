@@ -48,8 +48,11 @@ export interface ActualizarPacienteInput {
   direccion?: string;
 }
 
+export type EstadoPacienteFiltro = 'activo' | 'inactivo' | 'todos';
+
 export interface ListarPacientesParams {
   q?: string;
   page?: number;
   limit?: number;
+  estado?: EstadoPacienteFiltro;
 }

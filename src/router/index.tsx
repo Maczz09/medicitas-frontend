@@ -36,6 +36,7 @@ const AdminPagosPage = lazy(() => import('@/pages/auditor/AdminPagosPage'));
 const AdminCoberturasPage = lazy(() => import('@/pages/auditor/AdminCoberturasPage'));
 const AdminPrescripcionesPage = lazy(() => import('@/pages/auditor/AdminPrescripcionesPage'));
 const AdminNotificacionesPage = lazy(() => import('@/pages/auditor/AdminNotificacionesPage'));
+const MonitoreoPage = lazy(() => import('@/pages/auditor/MonitoreoPage'));
 
 function RootRedirect() {
   const user = useAuthStore((s) => s.user);
@@ -87,6 +88,7 @@ export function AppRouter() {
               <Route path="/auditor/trazas" element={<TrazasPage />} />
               <Route path="/auditor/usuarios" element={<UsuariosPage />} />
               <Route path="/auditor/medicos" element={<MedicosAdminPage />} />
+              <Route path="/auditor/monitoreo" element={<MonitoreoPage />} />
             </Route>
           </Route>
         </Route>

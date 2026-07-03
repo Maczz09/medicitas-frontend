@@ -7,7 +7,12 @@ services:
     restart: unless-stopped
     ports:
       - "8080:80"
-    # host.docker.internal se resuelve automáticamente en Docker Desktop (Windows/Mac).
-    # En Linux este extra_hosts lo mapea al gateway del host.
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    # Conecta a la red compartida del stack backend para proxear /api
+    # directamente al contenedor `backend:3000`, sin depender del puerto 80
+    # del host (evita colisiones con XAMPP/Apache en Windows).
+    networks:
+      - medicitas_shared_net
+
+networks:
+  medicitas_shared_net:
+    external: true
