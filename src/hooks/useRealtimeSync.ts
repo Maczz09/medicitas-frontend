@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 
-const SSE_URL = (import.meta.env.VITE_API_URL || '') + '/api/v1/realtime/stream';
+const SSE_URL = (import.meta.env.VITE_API_URL || '') + '/api/v2/realtime/stream';
 
 export function useRealtimeSync() {
   const queryClient = useQueryClient();

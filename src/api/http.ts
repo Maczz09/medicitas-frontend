@@ -6,7 +6,7 @@ import axios, {
 import { useAuthStore } from '@/store/auth.store';
 import type { ApiErrorBody, RefreshResponse } from '@/types';
 
-export const API_URL = import.meta.env.VITE_API_URL || '/api/v1';
+export const API_URL = import.meta.env.VITE_API_URL || '/api/v2';
 
 export const http = axios.create({ baseURL: API_URL });
 
