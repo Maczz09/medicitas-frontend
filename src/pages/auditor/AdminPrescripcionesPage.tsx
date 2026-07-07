@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CheckCheck, ChevronLeft, ChevronRight, Pill, RefreshCw } from 'lucide-react';
+import { CheckCheck, ChevronLeft, ChevronRight, FileWarning, Pill, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Avatar, Button, Card, EmptyState, PageHeader, Select, SkeletonRows, Tooltip } from '@/components/ui';
-import { EstadoRecetaBadge } from '@/components/domain/StatusBadge';
+import { EstadoRecetaBadge, ContingenciaBadge } from '@/components/domain/StatusBadge';
 import { prescripcionesApi } from '@/api/prescripciones.api';
 import { apiError } from '@/api/http';
 import type { DespachoAdmin, EstadoReceta } from '@/types';
@@ -24,10 +24,11 @@ export default function AdminPrescripcionesPage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
+  const [soloContingencia, setSoloContingencia] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-prescripciones', page, estado],
-    queryFn: () => prescripcionesApi.list({ page, limit: 10, estado: estado || undefined }),
+    queryKey: ['admin-prescripciones', page, estado, soloContingencia],
+    queryFn: () => prescripcionesApi.list({ page, limit: 10, estado: estado || undefined, contingencia: soloContingencia || undefined }),
     placeholderData: keepPreviousData,
   });
 
@@ -51,7 +52,15 @@ export default function AdminPrescripcionesPage() {
     <div>
       <PageHeader title="Prescripciones" subtitle="Despachos de receta a farmacia: estado, correlación y gestión" />
       <Card className="overflow-hidden">
-        <div className="border-b border-white/[0.06] p-4">
+        <div className="flex items-center gap-2 border-b border-white/[0.06] p-4">
+          <Button
+            size="sm"
+            variant={soloContingencia ? 'outline' : 'ghost'}
+            leftIcon={<FileWarning className="h-3.5 w-3.5" />}
+            onClick={() => { setSoloContingencia((v) => !v); setPage(1); }}
+          >
+            Contingencia
+          </Button>
           <div className="max-w-xs">
             <Select value={estado} onChange={(e) => { setEstado(e.target.value); setPage(1); }}>
               {ESTADOS.map((e) => <option key={e} value={e}>{e === '' ? 'Todos los estados' : e.replace(/_/g, ' ')}</option>)}
@@ -87,7 +96,10 @@ export default function AdminPrescripcionesPage() {
                       </td>
                       <td className="px-5 py-3 text-ink-200">{medicamento(d)}</td>
                       <td className="px-5 py-3">
-                        <EstadoRecetaBadge estado={d.estado as EstadoReceta} />
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <EstadoRecetaBadge estado={d.estado as EstadoReceta} />
+                          {d.contingencia_url_descarga && <ContingenciaBadge urlDescarga={d.contingencia_url_descarga} />}
+                        </div>
                         {d.motivo_rechazo && <p className="mt-0.5 max-w-[180px] truncate text-[11px] text-rose-300/70">{d.motivo_rechazo}</p>}
                       </td>
                       <td className="hidden px-5 py-3 font-mono text-xs text-ink-400 lg:table-cell">{d.referencia_farmacia ?? '—'}</td>

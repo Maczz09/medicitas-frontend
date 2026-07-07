@@ -1,3 +1,4 @@
+import { FileWarning } from 'lucide-react';
 import { Badge, type BadgeTone } from '@/components/ui/Badge';
 import type { EstadoCita, EstadoCobertura, EstadoPago, EstadoReceta } from '@/types';
 
@@ -33,6 +34,24 @@ export function EstadoRecetaBadge({ estado }: { estado: EstadoReceta }) {
     <Badge tone={m.tone} dot>
       {m.label}
     </Badge>
+  );
+}
+
+/** Enlace al PDF de contingencia — solo se renderiza si la receta se generó con farmacia caída. */
+export function ContingenciaBadge({ urlDescarga }: { urlDescarga: string }) {
+  return (
+    <a
+      href={urlDescarga}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e) => e.stopPropagation()}
+      title="Receta de contingencia: farmacia no estaba disponible al emitirla. Click para ver el PDF."
+    >
+      <Badge tone="warning" className="hover:ring-warn/50">
+        <FileWarning className="h-3 w-3" />
+        Contingencia
+      </Badge>
+    </a>
   );
 }
 

@@ -9,10 +9,12 @@ import { useAuthStore } from '@/store/auth.store';
 import { homePathForRole } from '@/lib/roles';
 import { Navigate } from 'react-router-dom';
 import { useInactivityTimeout } from '@/hooks/useInactivityTimeout';
+import { useCloseWindowLogout } from '@/hooks/useCloseWindowLogout';
 
 export function AppLayout() {
   const user = useAuthStore((s) => s.user);
   useInactivityTimeout();
+  useCloseWindowLogout();
   const location = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
 

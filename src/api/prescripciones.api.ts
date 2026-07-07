@@ -6,7 +6,7 @@ function idemHeaders(key?: string) {
 }
 
 export const prescripcionesApi = {
-  list: (params: { page?: number; limit?: number; estado?: string }) =>
+  list: (params: { page?: number; limit?: number; estado?: string; contingencia?: boolean }) =>
     http.get<{ data: DespachoAdmin[]; meta: PageMeta }>('/prescripciones', { params }).then((r) => r.data),
 
   getById: (id: string) => http.get<Receta>(`/prescripciones/${id}`).then((r) => r.data),

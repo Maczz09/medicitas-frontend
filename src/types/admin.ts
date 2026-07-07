@@ -59,6 +59,8 @@ export interface DespachoAdmin {
   fecha_emision: string;
   created_at: string;
   paciente_nombre: string | null;
+  /** Presente solo si farmacia estaba caída al emitir la receta — ver GenerarRecetaContingenciaUseCase. */
+  contingencia_url_descarga?: string | null;
 }
 
 export interface NotificacionAdmin {

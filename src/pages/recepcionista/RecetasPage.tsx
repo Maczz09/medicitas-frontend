@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CheckCheck, ChevronLeft, ChevronRight, Pill, RefreshCw, Search } from 'lucide-react';
+import { CheckCheck, ChevronLeft, ChevronRight, FileWarning, Pill, RefreshCw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Avatar, Button, Card, CardBody, EmptyState, Input, PageHeader, Select, SkeletonRows, Tooltip } from '@/components/ui';
-import { EstadoRecetaBadge } from '@/components/domain/StatusBadge';
+import { EstadoRecetaBadge, ContingenciaBadge } from '@/components/domain/StatusBadge';
 import { prescripcionesApi } from '@/api/prescripciones.api';
 import { apiError } from '@/api/http';
 import { useAuthStore } from '@/store/auth.store';
@@ -33,10 +33,11 @@ export default function RecetasPage() {
 
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
+  const [soloContingencia, setSoloContingencia] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['prescripciones-lista', page, estado],
-    queryFn: () => prescripcionesApi.list({ page, limit: 8, estado: estado || undefined }),
+    queryKey: ['prescripciones-lista', page, estado, soloContingencia],
+    queryFn: () => prescripcionesApi.list({ page, limit: 8, estado: estado || undefined, contingencia: soloContingencia || undefined }),
     placeholderData: keepPreviousData,
   });
   const items = data?.data ?? [];
@@ -142,10 +143,20 @@ export default function RecetasPage() {
         <Card className="overflow-hidden lg:col-span-3">
           <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] p-4">
             <h3 className="text-sm font-semibold text-ink-100">Despachos recientes</h3>
-            <div className="w-52">
-              <Select value={estado} onChange={(e) => { setEstado(e.target.value); setPage(1); }}>
-                {ESTADOS.map((e) => <option key={e} value={e}>{e === '' ? 'Todos los estados' : e.replace(/_/g, ' ')}</option>)}
-              </Select>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant={soloContingencia ? 'outline' : 'ghost'}
+                leftIcon={<FileWarning className="h-3.5 w-3.5" />}
+                onClick={() => { setSoloContingencia((v) => !v); setPage(1); }}
+              >
+                Contingencia
+              </Button>
+              <div className="w-52">
+                <Select value={estado} onChange={(e) => { setEstado(e.target.value); setPage(1); }}>
+                  {ESTADOS.map((e) => <option key={e} value={e}>{e === '' ? 'Todos los estados' : e.replace(/_/g, ' ')}</option>)}
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -186,7 +197,10 @@ export default function RecetasPage() {
                         </td>
                         <td className="px-5 py-3 text-ink-200">{medicamento(d)}</td>
                         <td className="px-5 py-3">
-                          <EstadoRecetaBadge estado={d.estado} />
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <EstadoRecetaBadge estado={d.estado} />
+                            {d.contingencia_url_descarga && <ContingenciaBadge urlDescarga={d.contingencia_url_descarga} />}
+                          </div>
                           {d.motivo_rechazo && <p className="mt-0.5 max-w-[160px] truncate text-[11px] text-rose-300/70">{d.motivo_rechazo}</p>}
                         </td>
                         <td className="px-5 py-3">
