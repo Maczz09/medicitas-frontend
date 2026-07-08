@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 
 const SSE_URL = (import.meta.env.VITE_API_URL || '') + '/api/v2/realtime/stream';
 
@@ -18,6 +19,19 @@ export function useRealtimeSync() {
         if (data.type === 'CONNECTED') {
           console.log('[SSE] Conexión establecida correctamente.');
           return;
+        }
+
+        // Avisos puntuales para eventos que necesitan que alguien actúe o se
+        // entere YA, no solo que su lista se refresque en silencio — sobre
+        // todo porque el despacho a farmacia ocurre async (vía RabbitMQ), así
+        // que quien registró la atención puede estar ya en otra pantalla
+        // cuando el fallo/contingencia realmente ocurre.
+        if (data.type === 'RecetaContingenciaGenerada') {
+          const medicamento = data.payload?.payload?.medicamento;
+          toast(
+            `⚠️ Farmacia no disponible — la receta${medicamento ? ` de ${medicamento}` : ''} se envió al paciente por WhatsApp en PDF. Quedó encolada y se reintentará automáticamente.`,
+            { icon: '⚠️', duration: 8000 },
+          );
         }
 
         // Invalidar de golpe todas las consultas activas de react-query.

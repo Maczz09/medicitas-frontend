@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, ShieldX } from 'lucide-react';
+import { CheckCircle2, Clock, ShieldAlert, ShieldX } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { fmtDate } from '@/lib/format';
 import type { ResultadoCobertura } from '@/types';
@@ -53,6 +53,14 @@ export function CoverageResultBanner({ result }: { result: ResultadoCobertura })
               </span>
               <span className="mb-1 text-sm text-ink-400">cubierto por el seguro</span>
             </div>
+          )}
+
+          {result.esFallback && result.estadoCobertura !== 'PENDIENTE' && (
+            <p className="mt-1.5 flex items-center gap-1.5 text-xs text-amber-300">
+              <ShieldAlert className="h-3.5 w-3.5 shrink-0" />
+              Aseguradora no disponible — resultado servido desde el caché de contingencia (última
+              validación exitosa conocida de este paciente), no en vivo.
+            </p>
           )}
 
           {result.mensaje && <p className="mt-1.5 text-xs text-ink-400">{result.mensaje}</p>}

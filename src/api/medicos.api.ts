@@ -4,6 +4,7 @@ import type {
   BloqueoAgendaInput,
   CrearMedicoInput,
   HorarioBase,
+  HorarioSemanaResponse,
   Medico,
 } from '@/types';
 
@@ -23,6 +24,12 @@ export const medicosApi = {
 
   registrarHorarios: (id: string, horarios: HorarioBase[]) =>
     http.post<{ mensaje: string }>(`/medicos/${id}/horarios`, { horarios }).then((r) => r.data),
+
+  consultarHorarioSemana: (id: string, semanaInicio: string) =>
+    http.get<{ data: HorarioSemanaResponse }>(`/medicos/${id}/horarios/semanas/${semanaInicio}`).then((r) => r.data.data),
+
+  definirHorarioSemana: (id: string, semanaInicio: string, dias: HorarioBase[]) =>
+    http.put<{ mensaje: string }>(`/medicos/${id}/horarios/semanas/${semanaInicio}`, { dias }).then((r) => r.data),
 
   registrarBloqueo: (id: string, body: BloqueoAgendaInput) =>
     http.post<{ data: unknown }>(`/medicos/${id}/bloqueos`, body).then((r) => r.data.data),

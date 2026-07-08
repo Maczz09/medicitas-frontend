@@ -26,6 +26,18 @@ export interface HorarioBase {
   duracion_cita_min: number;
 }
 
+/** Un día dentro de la respuesta de horario de una semana específica. */
+export interface HorarioSemanaDia extends HorarioBase {
+  activo: boolean;
+}
+
+/** Respuesta de GET /medicos/:id/horarios/semanas/:semanaInicio. */
+export interface HorarioSemanaResponse {
+  semanaInicio: string; // YYYY-MM-DD, lunes
+  origen: 'PLANTILLA' | 'SEMANA'; // PLANTILLA = fallback, sin override explícito para esta semana
+  dias: HorarioSemanaDia[];
+}
+
 export interface BloqueoAgendaInput {
   fecha_inicio: string;
   fecha_fin: string;

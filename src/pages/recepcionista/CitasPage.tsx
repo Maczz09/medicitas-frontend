@@ -165,6 +165,27 @@ export default function CitasPage() {
 
   const canSubmit = paciente && idMedico && especialidad && fecha && hora;
 
+  // Reserva "en la hora" (walk-in): el turno elegido cae cerca de ahora mismo.
+  // El trámite completo (agendar + validar cobertura + cobrar + registrar
+  // ingreso) consume del mismo margen de tolerancia — se avisa acá para
+  // evitar que se marque como No Asistida a mitad del proceso (ver
+  // toleranceWorker.js, ventana ampliada a 20 min para este caso).
+  //
+  // Asimétrico a propósito: el SlotPicker de abajo deja elegir un turno hasta
+  // 20 min después de su hora nominal (todavía "vigente" para él), así que
+  // este aviso debe reconocer ese mismo rango como "en la hora" — no solo
+  // ±5 min simétricos. Con ±5 min, un turno elegido con 18 min de retraso
+  // (perfectamente seleccionable arriba) no disparaba ningún aviso.
+  const fechaHoraSeleccionada = fecha && hora ? new Date(combinarFechaHora(fecha, hora)) : null;
+  const minAtrasoSeleccion = fechaHoraSeleccionada ? (Date.now() - fechaHoraSeleccionada.getTime()) / 60_000 : null;
+  const esReservaInmediata =
+    minAtrasoSeleccion !== null && minAtrasoSeleccion <= 20 && minAtrasoSeleccion >= -5;
+  const limiteReservaInmediata =
+    esReservaInmediata && fechaHoraSeleccionada
+      ? new Date(fechaHoraSeleccionada.getTime() + 20 * 60_000)
+      : null;
+  const plazoYaEncima = !!limiteReservaInmediata && limiteReservaInmediata.getTime() - Date.now() <= 5 * 60_000;
+
   // Filtrado y ordenado
   const hoyStr = hoyISO();
   const citasFiltradas = citas
@@ -325,6 +346,36 @@ export default function CitasPage() {
             onChange={(e) => setEspecialidad(e.target.value)}
             placeholder="Ej. Cardiología"
           />
+          {esReservaInmediata && limiteReservaInmediata && (
+            <div
+              className={`flex items-start gap-2 rounded-xl border p-3 text-xs ${
+                plazoYaEncima
+                  ? 'border-rose-500/30 bg-rose-500/[0.08] text-rose-300'
+                  : 'border-amber-500/30 bg-amber-500/[0.08] text-amber-300'
+              }`}
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              {plazoYaEncima ? (
+                <p>
+                  Este turno ya está sobre la hora — el límite de tolerancia es a las{' '}
+                  <span className="font-semibold">
+                    {limiteReservaInmediata.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  . Si no vas a alcanzar a validar cobertura, cobrar y registrar el ingreso antes de esa
+                  hora, cancélala y agenda una nueva en vez de dejar que se marque sola como No Asistida.
+                </p>
+              ) : (
+                <p>
+                  Esta cita es para ahora mismo. Tendrás hasta las{' '}
+                  <span className="font-semibold">
+                    {limiteReservaInmediata.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
+                  </span>{' '}
+                  para validar cobertura, cobrar y registrar el ingreso — después se marcará
+                  automáticamente como No Asistida.
+                </p>
+              )}
+            </div>
+          )}
         </div>
       </Modal>
 

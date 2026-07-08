@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
-import { Lock, ShieldCheck, Sparkles } from 'lucide-react';
+import { Loader2, Lock, ShieldCheck, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import {
   Button,
@@ -106,6 +106,13 @@ export default function ValidarCoberturaPage() {
             <Button className="w-full" disabled={!canSubmit} loading={validar.isPending} leftIcon={<Sparkles className="h-4 w-4" />} onClick={() => validar.mutate()}>
               Validar cobertura
             </Button>
+            {validar.isPending && (
+              <p className="flex items-center gap-1.5 text-xs text-ink-500">
+                <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                Verificando con la aseguradora — si no responde, se intentará el caché de
+                contingencia antes de marcarla como pendiente…
+              </p>
+            )}
           </CardBody>
         </Card>
 

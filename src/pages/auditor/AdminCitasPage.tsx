@@ -19,7 +19,9 @@ export default function AdminCitasPage() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-citas', page, estado],
-    queryFn: () => citasApi.list({ page, limit: 10, estado: estado || undefined }),
+    // A diferencia de Recepción/Médico, Auditoría sí necesita ver las citas
+    // de pacientes desactivados (soft-delete) para trazabilidad completa.
+    queryFn: () => citasApi.list({ page, limit: 10, estado: estado || undefined, incluirInactivos: true }),
     placeholderData: keepPreviousData,
   });
 

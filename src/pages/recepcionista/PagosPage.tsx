@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -28,7 +29,7 @@ import { EstadoPagoBadge } from '@/components/domain/StatusBadge';
 import { pagosApi } from '@/api/pagos.api';
 import { facturacionApi } from '@/api/facturacion.api';
 import { apiError } from '@/api/http';
-import { useActivityStore, type RecentPago } from '@/store/activity.store';
+import { useActivityStore, type RecentCita, type RecentPago } from '@/store/activity.store';
 import { useServerSync } from '@/hooks/useServerSync';
 import { fmtMoney } from '@/lib/format';
 import type { MetodoPago, TipoComprobante } from '@/types';
@@ -46,13 +47,23 @@ function fmtCitaFecha(fechaHora?: string) {
 
 export default function PagosPage() {
   useServerSync();
+  const navigate = useNavigate();
   const { citas, coberturas, pagos, addPago, updatePago } = useActivityStore();
+
+  const yaPagada = (c: RecentCita) =>
+    pagos.some((p) => p.idCita === c.idCita && p.estado !== 'REVERSADO');
 
   // Citas cobrables: estado válido Y sin pago activo (no reversado)
   const cobrables = citas.filter(
-    (c) =>
-      (c.estado === 'Pendiente' || c.estado === 'En_Atencion' || c.estado === 'Completada') &&
-      !pagos.some((p) => p.idCita === c.idCita && p.estado !== 'REVERSADO'),
+    (c) => (c.estado === 'Pendiente' || c.estado === 'En_Atencion' || c.estado === 'Completada') && !yaPagada(c),
+  );
+
+  // Citas que el usuario podría esperar ver (recién estaban en la lista) pero
+  // ya no son cobrables — se muestran deshabilitadas con el motivo en vez de
+  // desaparecer sin explicación (p. ej. el worker de tolerancia las marcó
+  // No_Asistida mientras se validaba cobertura).
+  const noCobrables = citas.filter(
+    (c) => (c.estado === 'No_Asistida' || c.estado === 'Cancelada') && !yaPagada(c),
   );
 
   const [idCita, setIdCita]               = useState('');
@@ -185,7 +196,44 @@ export default function PagosPage() {
                   </option>
                 );
               })}
+              {noCobrables.length > 0 && (
+                <optgroup label="No disponibles para cobro">
+                  {noCobrables.map((c) => {
+                    const f = fmtCitaFecha(c.fechaHora);
+                    const motivo = c.estado === 'No_Asistida' ? 'No Asistida' : 'Cancelada';
+                    const base = f
+                      ? `${c.pacienteNombre ?? c.idPaciente} · ${f.fecha} ${f.hora}`
+                      : `${c.pacienteNombre ?? c.idPaciente} · ${c.especialidad}`;
+                    // No usa `disabled`: un <option disabled> no se puede
+                    // seleccionar, así que el usuario nunca vería el motivo.
+                    // Se deja seleccionable — al elegirla, citaSel queda
+                    // undefined (no está en `cobrables`) y se muestra el
+                    // aviso de abajo explicando por qué no se puede cobrar.
+                    return (
+                      <option key={c.idCita} value={c.idCita}>
+                        {base} — {motivo}
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              )}
             </Select>
+            {idCita && !citaSel && noCobrables.some((c) => c.idCita === idCita) && (
+              <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-3 text-xs text-rose-300">
+                <p>
+                  Esta cita ya no se puede cobrar (
+                  {noCobrables.find((c) => c.idCita === idCita)?.estado === 'No_Asistida' ? 'fue marcada como No Asistida por superar el tiempo de tolerancia' : 'fue cancelada'}
+                  ). Una cita en este estado no se puede reprogramar — agenda una cita nueva para continuar.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/recepcion/citas')}
+                  className="mt-2 font-semibold text-rose-200 underline underline-offset-2 hover:text-rose-100"
+                >
+                  Ir a Citas para agendar una nueva →
+                </button>
+              </div>
+            )}
 
             {/* Resumen de la cita seleccionada */}
             <AnimatePresence>
