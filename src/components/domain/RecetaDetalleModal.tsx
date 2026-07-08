@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { ExternalLink, Stethoscope, Calendar, Pill, Building2, User } from 'lucide-react';
-import { Modal, Spinner } from '@/components/ui';
+import { ExternalLink, Printer, Stethoscope, Calendar, Pill, Building2, User } from 'lucide-react';
+import { Button, Modal, Spinner } from '@/components/ui';
 import { Badge } from '@/components/ui/Badge';
 import { EstadoRecetaBadge, ContingenciaBadge } from './StatusBadge';
 import { prescripcionesApi } from '@/api/prescripciones.api';
@@ -42,7 +42,24 @@ export function RecetaDetalleModal({ idReceta, open, onOpenChange }: Props) {
   });
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={idReceta ?? 'Receta'} description="Detalle completo de la receta" size="lg">
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={idReceta ?? 'Receta'}
+      description="Detalle completo de la receta"
+      size="lg"
+      footer={
+        idReceta && (
+          <Button
+            variant="secondary"
+            leftIcon={<Printer className="h-4 w-4" />}
+            onClick={() => window.open(`/prescripciones/${idReceta}/imprimir`, '_blank', 'noopener,noreferrer')}
+          >
+            Imprimir receta
+          </Button>
+        )
+      }
+    >
       {isLoading || !data ? (
         <div className="flex justify-center py-10">
           <Spinner />

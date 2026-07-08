@@ -38,6 +38,8 @@ const AdminPrescripcionesPage = lazy(() => import('@/pages/auditor/AdminPrescrip
 const AdminNotificacionesPage = lazy(() => import('@/pages/auditor/AdminNotificacionesPage'));
 const MonitoreoPage = lazy(() => import('@/pages/auditor/MonitoreoPage'));
 
+const RecetaImprimirPage = lazy(() => import('@/pages/RecetaImprimirPage'));
+
 function RootRedirect() {
   const user = useAuthStore((s) => s.user);
   return <Navigate to={user ? homePathForRole(user.rol) : '/login'} replace />;
@@ -91,6 +93,9 @@ export function AppRouter() {
               <Route path="/auditor/monitoreo" element={<MonitoreoPage />} />
             </Route>
           </Route>
+
+          {/* Sin AppLayout a propósito: vista de solo impresión, sin sidebar/topbar. */}
+          <Route path="/prescripciones/:id/imprimir" element={<RecetaImprimirPage />} />
         </Route>
 
         <Route path="/" element={<RootRedirect />} />
