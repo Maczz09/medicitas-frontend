@@ -37,19 +37,25 @@ export function EstadoRecetaBadge({ estado }: { estado: EstadoReceta }) {
   );
 }
 
-/** Enlace al PDF de contingencia — solo se renderiza si la receta se generó con farmacia caída. */
-export function ContingenciaBadge({ urlDescarga }: { urlDescarga: string }) {
+/**
+ * Enlace al PDF de la receta — se renderiza siempre que exista uno, ya sea
+ * por contingencia (farmacia caída) o como copia de cortesía de un despacho
+ * exitoso. El tono/label distingue cuál de los dos casos fue.
+ */
+export function ContingenciaBadge({ urlDescarga, esContingencia = true }: { urlDescarga: string; esContingencia?: boolean }) {
   return (
     <a
       href={urlDescarga}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => e.stopPropagation()}
-      title="Receta de contingencia: farmacia no estaba disponible al emitirla. Click para ver el PDF."
+      title={esContingencia
+        ? 'Receta de contingencia: farmacia no estaba disponible al emitirla. Click para ver el PDF.'
+        : 'Copia en PDF de la receta ya despachada. Click para ver el PDF.'}
     >
-      <Badge tone="warning" className="hover:ring-warn/50">
+      <Badge tone={esContingencia ? 'warning' : 'info'} className={esContingencia ? 'hover:ring-warn/50' : 'hover:ring-sky2/50'}>
         <FileWarning className="h-3 w-3" />
-        Contingencia
+        {esContingencia ? 'Contingencia' : 'Receta PDF'}
       </Badge>
     </a>
   );

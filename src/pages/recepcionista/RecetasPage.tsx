@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CheckCheck, ChevronLeft, ChevronRight, FileWarning, Pill, RefreshCw, Search } from 'lucide-react';
+import { CheckCheck, ChevronLeft, ChevronRight, Eye, FileWarning, Pill, RefreshCw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Avatar, Button, Card, CardBody, EmptyState, Input, PageHeader, Select, SkeletonRows, Tooltip } from '@/components/ui';
 import { EstadoRecetaBadge, ContingenciaBadge } from '@/components/domain/StatusBadge';
+import { RecetaDetalleModal } from '@/components/domain/RecetaDetalleModal';
 import { prescripcionesApi } from '@/api/prescripciones.api';
 import { apiError } from '@/api/http';
 import { useAuthStore } from '@/store/auth.store';
@@ -34,6 +35,7 @@ export default function RecetasPage() {
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
   const [soloContingencia, setSoloContingencia] = useState(false);
+  const [idDetalle, setIdDetalle] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['prescripciones-lista', page, estado, soloContingencia],
@@ -199,12 +201,22 @@ export default function RecetasPage() {
                         <td className="px-5 py-3">
                           <div className="flex flex-wrap items-center gap-1.5">
                             <EstadoRecetaBadge estado={d.estado} />
-                            {d.contingencia_url_descarga && <ContingenciaBadge urlDescarga={d.contingencia_url_descarga} />}
+                            {d.contingencia_url_descarga && (
+                              <ContingenciaBadge urlDescarga={d.contingencia_url_descarga} esContingencia={!!d.es_contingencia} />
+                            )}
                           </div>
                           {d.motivo_rechazo && <p className="mt-0.5 max-w-[160px] truncate text-[11px] text-rose-300/70">{d.motivo_rechazo}</p>}
                         </td>
                         <td className="px-5 py-3">
                           <div className="flex items-center justify-end gap-1">
+                            <Tooltip content="Ver detalle completo">
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setIdDetalle(d.id); }}
+                                className="rounded-lg p-2 text-ink-400 hover:bg-white/[0.06] hover:text-ink-100"
+                              >
+                                <Eye className="h-4 w-4" />
+                              </button>
+                            </Tooltip>
                             {(d.estado === 'RECHAZADA_POR_VALIDACION' || d.estado === 'RECHAZADA_POR_STOCK') && (
                               <Tooltip content="Reintentar envío">
                                 <button
@@ -246,6 +258,8 @@ export default function RecetasPage() {
           )}
         </Card>
       </div>
+
+      <RecetaDetalleModal idReceta={idDetalle} open={!!idDetalle} onOpenChange={(o) => !o && setIdDetalle(null)} />
     </div>
   );
 }

@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CheckCheck, ChevronLeft, ChevronRight, FileWarning, Pill, RefreshCw } from 'lucide-react';
+import { CheckCheck, ChevronLeft, ChevronRight, Eye, FileWarning, Pill, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Avatar, Button, Card, EmptyState, PageHeader, Select, SkeletonRows, Tooltip } from '@/components/ui';
 import { EstadoRecetaBadge, ContingenciaBadge } from '@/components/domain/StatusBadge';
+import { RecetaDetalleModal } from '@/components/domain/RecetaDetalleModal';
 import { prescripcionesApi } from '@/api/prescripciones.api';
 import { apiError } from '@/api/http';
 import type { DespachoAdmin, EstadoReceta } from '@/types';
@@ -25,6 +26,7 @@ export default function AdminPrescripcionesPage() {
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
   const [soloContingencia, setSoloContingencia] = useState(false);
+  const [idDetalle, setIdDetalle] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['admin-prescripciones', page, estado, soloContingencia],
@@ -77,6 +79,7 @@ export default function AdminPrescripcionesPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.06] text-left text-xs text-ink-400">
+                    <th className="hidden px-5 py-3 font-medium md:table-cell">ID</th>
                     <th className="px-5 py-3 font-medium">Paciente</th>
                     <th className="px-5 py-3 font-medium">Medicamento</th>
                     <th className="px-5 py-3 font-medium">Estado</th>
@@ -88,6 +91,7 @@ export default function AdminPrescripcionesPage() {
                 <tbody>
                   {items.map((d, i) => (
                     <motion.tr key={d.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.02 }} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                      <td className="hidden px-5 py-3 font-mono text-xs text-ink-500 md:table-cell">{d.id}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <Avatar name={d.paciente_nombre ?? d.id_paciente} size="sm" />
@@ -98,7 +102,9 @@ export default function AdminPrescripcionesPage() {
                       <td className="px-5 py-3">
                         <div className="flex flex-wrap items-center gap-1.5">
                           <EstadoRecetaBadge estado={d.estado as EstadoReceta} />
-                          {d.contingencia_url_descarga && <ContingenciaBadge urlDescarga={d.contingencia_url_descarga} />}
+                          {d.contingencia_url_descarga && (
+                            <ContingenciaBadge urlDescarga={d.contingencia_url_descarga} esContingencia={!!d.es_contingencia} />
+                          )}
                         </div>
                         {d.motivo_rechazo && <p className="mt-0.5 max-w-[180px] truncate text-[11px] text-rose-300/70">{d.motivo_rechazo}</p>}
                       </td>
@@ -106,6 +112,9 @@ export default function AdminPrescripcionesPage() {
                       <td className="hidden px-5 py-3 font-mono text-xs text-ink-500 xl:table-cell">{d.correlation_id?.slice(0, 10) ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
+                          <Tooltip content="Ver detalle completo">
+                            <button onClick={() => setIdDetalle(d.id)} className="rounded-lg p-2 text-ink-400 hover:bg-white/[0.06] hover:text-ink-100"><Eye className="h-4 w-4" /></button>
+                          </Tooltip>
                           {(d.estado === 'RECHAZADA_POR_VALIDACION' || d.estado === 'RECHAZADA_POR_STOCK') && (
                             <Tooltip content="Reintentar envío">
                               <button onClick={() => reintentar.mutate(d.id)} className="rounded-lg p-2 text-ink-400 hover:bg-white/[0.06] hover:text-brand-300"><RefreshCw className="h-4 w-4" /></button>
@@ -135,6 +144,8 @@ export default function AdminPrescripcionesPage() {
           </>
         )}
       </Card>
+
+      <RecetaDetalleModal idReceta={idDetalle} open={!!idDetalle} onOpenChange={(o) => !o && setIdDetalle(null)} />
     </div>
   );
 }
