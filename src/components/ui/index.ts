@@ -14,3 +14,6 @@ export { EmptyState } from './EmptyState';
 export { StatCard } from './StatCard';
 export { PageHeader } from './PageHeader';
 export { ConfirmDialog } from './ConfirmDialog';
+export { SearchableSelect } from './SearchableSelect';
+export type { SearchableSelectOption } from './SearchableSelect';
+export { Pagination } from './Pagination';

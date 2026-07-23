@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CheckCheck, ChevronLeft, ChevronRight, Eye, FileWarning, Pill, RefreshCw, Search } from 'lucide-react';
+import { CheckCheck, Eye, FileWarning, Pill, RefreshCw, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Avatar, Button, Card, CardBody, EmptyState, Input, PageHeader, Select, SkeletonRows, Tooltip } from '@/components/ui';
+import { Avatar, Button, Card, CardBody, EmptyState, Input, PageHeader, Pagination, SkeletonRows, Tooltip } from '@/components/ui';
 import { EstadoRecetaBadge, ContingenciaBadge } from '@/components/domain/StatusBadge';
 import { RecetaDetalleModal } from '@/components/domain/RecetaDetalleModal';
+import { ListToolbar } from '@/components/domain/ListToolbar';
 import { prescripcionesApi } from '@/api/prescripciones.api';
 import { apiError } from '@/api/http';
 import { useAuthStore } from '@/store/auth.store';
-import type { DespachoAdmin, EstadoReceta, Receta } from '@/types';
+import { useDebounce } from '@/hooks/useDebounce';
+import { queryKeys } from '@/lib/queryKeys';
+import type { DespachoAdmin, Paciente } from '@/types';
 
 const ESTADOS = ['', 'CREADA', 'ENVIADA_A_FARMACIA', 'DESPACHADA', 'RECHAZADA_POR_STOCK', 'RECHAZADA_POR_VALIDACION', 'RETIRADA'];
+const ESTADO_OPTIONS = ESTADOS.map((e) => ({ value: e, label: e === '' ? 'Todos los estados' : e.replace(/_/g, ' ') }));
 
 function medicamento(d: DespachoAdmin): string {
   try {
@@ -30,32 +34,54 @@ export default function RecetasPage() {
   const puedeMarcarRetirada = rol !== 'Médico';
 
   const [idReceta, setIdReceta] = useState('');
-  const [current, setCurrent] = useState<Receta | null>(null);
+  // Puntero al id activo, no el dato — el dato lo trae un useQuery propio
+  // (abajo) para que quede bajo el mismo prefijo de queryKey que ya invalida
+  // REALTIME_QUERY_MAP (RecetaDespachada/Rechazada/...). Con un useState
+  // poblado solo por el onSuccess de una mutación, esta tarjeta se quedaba
+  // congelada si el estado cambiaba en segundo plano (ej. recovery replay de
+  // farmacia) mientras el usuario la tenía abierta — mismo bug que tuvo
+  // ValidarCoberturaPage.tsx con el resultado de cobertura.
+  const [idSeleccionada, setIdSeleccionada] = useState<string | null>(null);
 
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
   const [soloContingencia, setSoloContingencia] = useState(false);
+  const [search, setSearch] = useState('');
+  const [paciente, setPaciente] = useState<Paciente | null>(null);
+  const debouncedSearch = useDebounce(search, 350);
   const [idDetalle, setIdDetalle] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['prescripciones-lista', page, estado, soloContingencia],
-    queryFn: () => prescripcionesApi.list({ page, limit: 8, estado: estado || undefined, contingencia: soloContingencia || undefined }),
+    queryKey: queryKeys.prescripciones.lista(page, estado, soloContingencia, debouncedSearch, paciente?.id_paciente),
+    queryFn: () => prescripcionesApi.list({
+      page, limit: 8, estado: estado || undefined, contingencia: soloContingencia || undefined,
+      q: debouncedSearch || undefined, idPaciente: paciente?.id_paciente,
+    }),
     placeholderData: keepPreviousData,
   });
   const items = data?.data ?? [];
   const meta = data?.meta;
-  const refreshLista = () => qc.invalidateQueries({ queryKey: ['prescripciones-lista'] });
+  const refreshLista = () => qc.invalidateQueries({ queryKey: queryKeys.prescripciones.all });
+
+  // Bajo el mismo prefijo ['prescripciones', ...] que queryKeys.prescripciones.all
+  // — TanStack Query invalida por prefijo, así que cualquier invalidateQueries
+  // sobre .all (manual o disparado por REALTIME_QUERY_MAP) refresca esto también.
+  const currentQuery = useQuery({
+    queryKey: ['prescripciones', 'detalle', idSeleccionada],
+    queryFn: () => prescripcionesApi.getById(idSeleccionada as string),
+    enabled: !!idSeleccionada,
+  });
+  const current = currentQuery.data ?? null;
 
   const buscar = useMutation({
     mutationFn: (id: string) => prescripcionesApi.getById(id),
-    onSuccess: (r) => setCurrent(r),
+    onSuccess: (r) => setIdSeleccionada(r.id),
     onError: (err) => toast.error(apiError(err, 'Receta no encontrada')),
   });
 
   const reintentar = useMutation({
     mutationFn: (id: string) => prescripcionesApi.reintentar(id, crypto.randomUUID()),
-    onSuccess: (r) => {
-      setCurrent((c) => (c ? { ...c, estado: r.estado ?? c.estado } : c));
+    onSuccess: () => {
       toast.success('Reintento de envío iniciado');
       refreshLista();
     },
@@ -64,18 +90,16 @@ export default function RecetasPage() {
 
   const retirar = useMutation({
     mutationFn: (id: string) => prescripcionesApi.marcarRetirada(id, crypto.randomUUID()),
-    onSuccess: (r) => {
-      setCurrent((c) => (c ? { ...c, estado: 'RETIRADA' as EstadoReceta } : c));
+    onSuccess: () => {
       toast.success('Retiro registrado');
       refreshLista();
-      void r;
     },
     onError: (err) => toast.error(apiError(err)),
   });
 
   const seleccionar = (id: string) => {
     setIdReceta(id);
-    buscar.mutate(id);
+    setIdSeleccionada(id);
   };
 
   return (
@@ -132,7 +156,7 @@ export default function RecetasPage() {
                       Marcar retirada
                     </Button>
                   )}
-                  <Button size="sm" variant="ghost" onClick={() => buscar.mutate(current.id)}>
+                  <Button size="sm" variant="ghost" loading={currentQuery.isFetching} onClick={() => currentQuery.refetch()}>
                     Actualizar
                   </Button>
                 </div>
@@ -143,9 +167,25 @@ export default function RecetasPage() {
 
         {/* ── Derecha: cola de despachos — la lista real, filtrable y paginada ── */}
         <Card className="overflow-hidden lg:col-span-3">
-          <div className="flex items-center justify-between gap-3 border-b border-white/[0.06] p-4">
+          <div className="border-b border-white/[0.06] px-5 py-3">
             <h3 className="text-sm font-semibold text-ink-100">Despachos recientes</h3>
-            <div className="flex items-center gap-2">
+          </div>
+          <ListToolbar
+            search={{
+              value: search,
+              onChange: (v) => { setSearch(v); setPage(1); },
+              placeholder: 'Buscar por medicamento, referencia o motivo…',
+            }}
+            estado={{
+              value: estado,
+              onChange: (v) => { setEstado(v); setPage(1); },
+              options: ESTADO_OPTIONS,
+            }}
+            paciente={{
+              value: paciente,
+              onChange: (p) => { setPaciente(p); setPage(1); },
+            }}
+            extra={
               <Button
                 size="sm"
                 variant={soloContingencia ? 'outline' : 'ghost'}
@@ -154,13 +194,8 @@ export default function RecetasPage() {
               >
                 Contingencia
               </Button>
-              <div className="w-52">
-                <Select value={estado} onChange={(e) => { setEstado(e.target.value); setPage(1); }}>
-                  {ESTADOS.map((e) => <option key={e} value={e}>{e === '' ? 'Todos los estados' : e.replace(/_/g, ' ')}</option>)}
-                </Select>
-              </div>
-            </div>
-          </div>
+            }
+          />
 
           {isLoading ? (
             <div className="p-4"><SkeletonRows rows={6} /></div>
@@ -245,15 +280,7 @@ export default function RecetasPage() {
                 </table>
               </div>
 
-              {meta && (
-                <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-                  <p className="text-xs text-ink-400">{meta.total} despacho{meta.total === 1 ? '' : 's'} · página {meta.page} de {meta.totalPages || 1}</p>
-                  <div className="flex items-center gap-1.5">
-                    <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} leftIcon={<ChevronLeft className="h-4 w-4" />}>Anterior</Button>
-                    <Button variant="secondary" size="sm" disabled={page >= (meta.totalPages || 1)} onClick={() => setPage((p) => p + 1)} rightIcon={<ChevronRight className="h-4 w-4" />}>Siguiente</Button>
-                  </div>
-                </div>
-              )}
+              <Pagination meta={meta} page={page} onPageChange={setPage} itemLabel="despachos" />
             </>
           )}
         </Card>

@@ -43,6 +43,8 @@ export interface EncuentroHistorico {
   idEncuentro: string;
   idCita: string;
   idMedico: string;
+  /** false = el encuentro se guardó con Citas no disponible; la cita aún no se confirmó como Completada. */
+  citaCompletadaVerificada?: boolean;
   fecha: string;
   diagnosticoCie10: string;
   descripcion?: string | null;

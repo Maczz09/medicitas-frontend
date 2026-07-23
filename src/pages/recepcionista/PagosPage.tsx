@@ -23,6 +23,7 @@ import {
   Modal,
   PageHeader,
   Select,
+  SearchableSelect,
   Tooltip,
 } from '@/components/ui';
 import { EstadoPagoBadge } from '@/components/domain/StatusBadge';
@@ -179,45 +180,33 @@ export default function PagosPage() {
           </div>
           <CardBody className="space-y-4">
             {/* Selector de cita */}
-            <Select
+            <SearchableSelect
               label="Cita a cobrar"
               value={idCita}
-              onChange={(e) => setIdCita(e.target.value)}
-            >
-              <option value="">Selecciona una cita…</option>
-              {cobrables.map((c) => {
-                const f = fmtCitaFecha(c.fechaHora);
-                const label = f
-                  ? `${c.pacienteNombre ?? c.idPaciente} · ${f.fecha} ${f.hora}`
-                  : `${c.pacienteNombre ?? c.idPaciente} · ${c.especialidad}`;
-                return (
-                  <option key={c.idCita} value={c.idCita}>
-                    {label}
-                  </option>
-                );
-              })}
-              {noCobrables.length > 0 && (
-                <optgroup label="No disponibles para cobro">
-                  {noCobrables.map((c) => {
-                    const f = fmtCitaFecha(c.fechaHora);
-                    const motivo = c.estado === 'No_Asistida' ? 'No Asistida' : 'Cancelada';
-                    const base = f
-                      ? `${c.pacienteNombre ?? c.idPaciente} · ${f.fecha} ${f.hora}`
-                      : `${c.pacienteNombre ?? c.idPaciente} · ${c.especialidad}`;
-                    // No usa `disabled`: un <option disabled> no se puede
-                    // seleccionar, así que el usuario nunca vería el motivo.
-                    // Se deja seleccionable — al elegirla, citaSel queda
-                    // undefined (no está en `cobrables`) y se muestra el
-                    // aviso de abajo explicando por qué no se puede cobrar.
-                    return (
-                      <option key={c.idCita} value={c.idCita}>
-                        {base} — {motivo}
-                      </option>
-                    );
-                  })}
-                </optgroup>
-              )}
-            </Select>
+              onChange={(val) => setIdCita(val)}
+              placeholder="Selecciona una cita…"
+              options={[
+                ...cobrables.map((c) => {
+                  const f = fmtCitaFecha(c.fechaHora);
+                  const label = f
+                    ? `${c.pacienteNombre ?? c.idPaciente} · ${f.fecha} ${f.hora}`
+                    : `${c.pacienteNombre ?? c.idPaciente} · ${c.especialidad}`;
+                  return { value: c.idCita, label };
+                }),
+                ...noCobrables.map((c) => {
+                  const f = fmtCitaFecha(c.fechaHora);
+                  const motivo = c.estado === 'No_Asistida' ? 'No Asistida' : 'Cancelada';
+                  const base = f
+                    ? `${c.pacienteNombre ?? c.idPaciente} · ${f.fecha} ${f.hora}`
+                    : `${c.pacienteNombre ?? c.idPaciente} · ${c.especialidad}`;
+                  return {
+                    value: c.idCita,
+                    label: `${base} — ${motivo}`,
+                    group: 'No disponibles para cobro',
+                  };
+                }),
+              ]}
+            />
             {idCita && !citaSel && noCobrables.some((c) => c.idCita === idCita) && (
               <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.06] p-3 text-xs text-rose-300">
                 <p>

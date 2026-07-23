@@ -6,11 +6,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { BadgePlus, Pencil, Stethoscope } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Avatar, Badge, Button, Card, EmptyState, Input, Modal, PageHeader, SkeletonRows, Tooltip } from '@/components/ui';
+import { Avatar, Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Pagination, SkeletonRows, Tooltip } from '@/components/ui';
+import { ListToolbar } from '@/components/domain/ListToolbar';
 import { MedicoEditModal } from '@/features/medicos/MedicoEditModal';
-import { useMedicos } from '@/hooks/useMedicos';
+import { useMedicosList } from '@/hooks/useMedicos';
 import { medicosApi } from '@/api/medicos.api';
 import { apiError } from '@/api/http';
+import { useDebounce } from '@/hooks/useDebounce';
+import { queryKeys } from '@/lib/queryKeys';
 import type { Medico } from '@/types';
 
 const schema = z.object({
@@ -31,7 +34,12 @@ type FormValues = z.infer<typeof schema>;
 
 export default function MedicosAdminPage() {
   const qc = useQueryClient();
-  const { data: medicos, isLoading } = useMedicos();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
+  const { data, isLoading } = useMedicosList({ page, limit: 10, q: debouncedSearch || undefined });
+  const medicos = data?.data ?? [];
+  const meta = data?.meta;
   const [open, setOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<Medico | null>(null);
 
@@ -46,7 +54,7 @@ export default function MedicosAdminPage() {
     mutationFn: medicosApi.crear,
     onSuccess: () => {
       toast.success('Médico registrado');
-      qc.invalidateQueries({ queryKey: ['medicos'] });
+      qc.invalidateQueries({ queryKey: queryKeys.medicos.all });
       reset();
       setOpen(false);
     },
@@ -66,54 +74,64 @@ export default function MedicosAdminPage() {
       />
 
       <Card className="overflow-hidden">
+        <ListToolbar
+          search={{
+            value: search,
+            onChange: (v) => { setSearch(v); setPage(1); },
+            placeholder: 'Buscar por nombre, apellido, CMP o especialidad…',
+          }}
+        />
         {isLoading ? (
           <div className="p-4"><SkeletonRows rows={4} /></div>
         ) : !medicos?.length ? (
           <EmptyState icon={Stethoscope} title="Sin médicos" description="Registra el primer médico de la clínica." />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/[0.06] text-left text-xs text-ink-400">
-                  <th className="px-5 py-3 font-medium">Médico</th>
-                  <th className="px-5 py-3 font-medium">CMP</th>
-                  <th className="px-5 py-3 font-medium">Especialidad</th>
-                  <th className="px-5 py-3 font-medium">Estado</th>
-                  <th className="px-5 py-3 text-right font-medium">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {medicos.map((m, i) => (
-                  <motion.tr key={m.id_medico} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={`${m.nombre} ${m.apellido}`} size="sm" />
-                        <span className="font-medium text-ink-100">{m.nombre} {m.apellido}</span>
-                      </div>
-                    </td>
-                    <td className="px-5 py-3 font-mono text-ink-300">{m.cmp}</td>
-                    <td className="px-5 py-3 text-ink-200">{m.especialidad}</td>
-                    <td className="px-5 py-3">
-                      {m.activo === 0 || m.activo === false ? (
-                        <Badge tone="neutral" dot>Inactivo</Badge>
-                      ) : (
-                        <Badge tone="success" dot>Activo</Badge>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <div className="flex justify-end">
-                        <Tooltip content="Editar médico">
-                          <button onClick={() => setEditTarget(m)} className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300">
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                        </Tooltip>
-                      </div>
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-white/[0.06] text-left text-xs text-ink-400">
+                    <th className="px-5 py-3 font-medium">Médico</th>
+                    <th className="px-5 py-3 font-medium">CMP</th>
+                    <th className="px-5 py-3 font-medium">Especialidad</th>
+                    <th className="px-5 py-3 font-medium">Estado</th>
+                    <th className="px-5 py-3 text-right font-medium">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {medicos.map((m, i) => (
+                    <motion.tr key={m.id_medico} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.03 }} className="border-b border-white/[0.04] hover:bg-white/[0.02]">
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-3">
+                          <Avatar name={`${m.nombre} ${m.apellido}`} size="sm" />
+                          <span className="font-medium text-ink-100">{m.nombre} {m.apellido}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3 font-mono text-ink-300">{m.cmp}</td>
+                      <td className="px-5 py-3 text-ink-200">{m.especialidad}</td>
+                      <td className="px-5 py-3">
+                        {m.activo === 0 || m.activo === false ? (
+                          <Badge tone="neutral" dot>Inactivo</Badge>
+                        ) : (
+                          <Badge tone="success" dot>Activo</Badge>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="flex justify-end">
+                          <Tooltip content="Editar médico">
+                            <button onClick={() => setEditTarget(m)} className="rounded-lg p-2 text-ink-400 transition-colors hover:bg-white/[0.06] hover:text-brand-300">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          </Tooltip>
+                        </div>
+                      </td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <Pagination meta={meta} page={page} onPageChange={setPage} itemLabel="médicos" />
+          </>
         )}
       </Card>
 

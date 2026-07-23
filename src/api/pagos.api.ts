@@ -2,7 +2,7 @@ import { http } from './http';
 import type { ConfirmarPagoInput, Pago, PagoAdmin, PageMeta } from '@/types';
 
 export const pagosApi = {
-  list: (params: { page?: number; limit?: number; estado?: string }) =>
+  list: (params: { page?: number; limit?: number; estado?: string; q?: string; idPaciente?: string }) =>
     http.get<{ data: PagoAdmin[]; meta: PageMeta }>('/pagos', { params }).then((r) => r.data),
 
   // Idempotency-Key SIEMPRE presente: confirmar un pago es una operación con

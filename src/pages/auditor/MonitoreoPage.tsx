@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import { auditoriaApi } from '@/api/auditoria.api';
+import { adminApi } from '@/api/admin.api';
+import { apiError } from '@/api/http';
+import { useResilienceStore } from '@/store/resilience.store';
+import { NOMBRES_MODULOS } from '@/lib/nombresModulos';
 import {
   Server,
   ShieldCheck,
@@ -8,16 +13,37 @@ import {
   MessageCircle,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  Power,
+  Zap,
 } from 'lucide-react';
 import { PageHeader } from '@/components/ui/PageHeader';
 
 export default function MonitoreoPage() {
+  const qc = useQueryClient();
   const { data: health, isLoading } = useQuery({
     queryKey: ['health-status'],
     queryFn: auditoriaApi.health,
     refetchInterval: 3000, // Polling cada 3 segundos
   });
+
+  const { data: servicios, isLoading: isLoadingServicios } = useQuery({
+    queryKey: ['admin-servicios'],
+    queryFn: adminApi.servicios,
+  });
+
+  const toggle = useMutation({
+    mutationFn: ({ nombre, habilitado }: { nombre: string; habilitado: boolean }) =>
+      adminApi.toggleServicio(nombre, habilitado),
+    onSuccess: (data) => {
+      toast.success(`${NOMBRES_MODULOS[data.nombre] ?? data.nombre} ${data.habilitado ? 'habilitado' : 'deshabilitado'}`);
+      qc.invalidateQueries({ queryKey: ['admin-servicios'] });
+    },
+    onError: (err) => toast.error(apiError(err, 'No se pudo cambiar el estado del servicio')),
+  });
+
+  const circuitosAbiertos = useResilienceStore((s) => s.circuitosAbiertos);
+  const nombresConCircuitoAbierto = Array.from(new Set(Object.values(circuitosAbiertos)));
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -168,6 +194,65 @@ export default function MonitoreoPage() {
                 )}
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kill-switch de módulos — simula la caída de un servicio dentro del
+          monolito, para probar resiliencia (circuit breaker, bulkhead) sin
+          tocar curl/Postman. Solo Auditor llega a esta página. */}
+      <div className="bg-surface border border-brand-primary/10 rounded-xl p-5 shadow-sm">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2 bg-brand-primary/10 rounded-lg text-brand-primary">
+            <Power className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-text-primary">Módulos del sistema (kill-switch)</h3>
+            <p className="text-xs text-gray-400">Deshabilita un módulo para simular su caída y probar la degradación del resto del sistema.</p>
+          </div>
+        </div>
+
+        {isLoadingServicios ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-brand-primary" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+            {Object.entries(servicios ?? {}).map(([nombre, habilitado]) => (
+              <button
+                key={nombre}
+                onClick={() => toggle.mutate({ nombre, habilitado: !habilitado })}
+                disabled={toggle.isPending}
+                className={`flex items-center justify-between rounded-lg border px-3.5 py-2.5 text-sm transition-colors ${
+                  habilitado
+                    ? 'border-success/20 bg-success/5 text-text-primary hover:bg-success/10'
+                    : 'border-danger/30 bg-danger/10 text-danger hover:bg-danger/20'
+                }`}
+              >
+                <span className="font-medium">{NOMBRES_MODULOS[nombre] ?? nombre}</span>
+                <span className="text-xs font-semibold">{habilitado ? 'Habilitado' : 'Deshabilitado'}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Circuitos abiertos ahora mismo — vive del mismo store que alimenta
+          el banner de degradación global (ResilienceBanner.tsx). */}
+      {nombresConCircuitoAbierto.length > 0 && (
+        <div className="bg-surface border border-danger/20 rounded-xl p-5 shadow-sm">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="p-2 bg-danger/10 rounded-lg text-danger">
+              <Zap className="w-6 h-6" />
+            </div>
+            <h3 className="font-semibold text-text-primary">Circuit breakers abiertos ahora mismo</h3>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {nombresConCircuitoAbierto.map((servicio) => (
+              <span key={servicio} className="rounded-full bg-danger/10 px-3 py-1 text-xs font-medium text-danger">
+                {servicio}
+              </span>
+            ))}
           </div>
         </div>
       )}

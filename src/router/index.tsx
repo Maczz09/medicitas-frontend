@@ -90,6 +90,7 @@ export function AppRouter() {
               <Route path="/auditor/trazas" element={<TrazasPage />} />
               <Route path="/auditor/usuarios" element={<UsuariosPage />} />
               <Route path="/auditor/medicos" element={<MedicosAdminPage />} />
+              <Route path="/auditor/medicos/horarios" element={<AgendaPage />} />
               <Route path="/auditor/monitoreo" element={<MonitoreoPage />} />
             </Route>
           </Route>

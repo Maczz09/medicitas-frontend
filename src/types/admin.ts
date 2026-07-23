@@ -9,6 +9,7 @@ export interface CitaAdmin {
   fecha_hora: string;
   especialidad: string;
   estado: EstadoCita;
+  pago_verificado: number;
   correlation_id: string | null;
   created_at: string;
   paciente_nombre: string | null;
@@ -23,6 +24,7 @@ export interface PagoAdmin {
   metodo_pago: string;
   monto_total: string | number;
   monto_cobertura: string | number;
+  cobertura_verificada: number;
   monto_copago: string | number;
   estado: string;
   tipo_comprobante: string;
@@ -69,9 +71,12 @@ export interface NotificacionAdmin {
   id_mensaje: string;
   id_evento_origen: string;
   tipo_evento: string;
+  id_paciente: string | null;
+  paciente_nombre: string | null;
   telefono_destino: string;
   contenido: string;
   estado: string;
+  referencia_gateway: string | null;
   intentos: number;
   error_msg: string | null;
   correlation_id: string | null;

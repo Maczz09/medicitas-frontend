@@ -1,16 +1,20 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CheckCheck, ChevronLeft, ChevronRight, Eye, FileWarning, Pill, RefreshCw } from 'lucide-react';
+import { CheckCheck, Eye, FileWarning, Pill, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Avatar, Button, Card, EmptyState, PageHeader, Select, SkeletonRows, Tooltip } from '@/components/ui';
+import { Avatar, Button, Card, EmptyState, PageHeader, Pagination, SkeletonRows, Tooltip } from '@/components/ui';
 import { EstadoRecetaBadge, ContingenciaBadge } from '@/components/domain/StatusBadge';
 import { RecetaDetalleModal } from '@/components/domain/RecetaDetalleModal';
+import { ListToolbar } from '@/components/domain/ListToolbar';
 import { prescripcionesApi } from '@/api/prescripciones.api';
 import { apiError } from '@/api/http';
-import type { DespachoAdmin, EstadoReceta } from '@/types';
+import { useDebounce } from '@/hooks/useDebounce';
+import { queryKeys } from '@/lib/queryKeys';
+import type { DespachoAdmin, EstadoReceta, Paciente } from '@/types';
 
 const ESTADOS = ['', 'CREADA', 'ENVIADA_A_FARMACIA', 'DESPACHADA', 'RECHAZADA_POR_STOCK', 'RECHAZADA_POR_VALIDACION', 'RETIRADA'];
+const ESTADO_OPTIONS = ESTADOS.map((e) => ({ value: e, label: e === '' ? 'Todos los estados' : e.replace(/_/g, ' ') }));
 
 function medicamento(d: DespachoAdmin): string {
   try {
@@ -26,15 +30,21 @@ export default function AdminPrescripcionesPage() {
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
   const [soloContingencia, setSoloContingencia] = useState(false);
+  const [search, setSearch] = useState('');
+  const [paciente, setPaciente] = useState<Paciente | null>(null);
+  const debouncedSearch = useDebounce(search, 350);
   const [idDetalle, setIdDetalle] = useState<string | null>(null);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-prescripciones', page, estado, soloContingencia],
-    queryFn: () => prescripcionesApi.list({ page, limit: 10, estado: estado || undefined, contingencia: soloContingencia || undefined }),
+    queryKey: queryKeys.prescripciones.lista(page, estado, soloContingencia, debouncedSearch, paciente?.id_paciente),
+    queryFn: () => prescripcionesApi.list({
+      page, limit: 10, estado: estado || undefined, contingencia: soloContingencia || undefined,
+      q: debouncedSearch || undefined, idPaciente: paciente?.id_paciente,
+    }),
     placeholderData: keepPreviousData,
   });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['admin-prescripciones'] });
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.prescripciones.all });
 
   const reintentar = useMutation({
     mutationFn: (id: string) => prescripcionesApi.reintentar(id, crypto.randomUUID()),
@@ -54,21 +64,32 @@ export default function AdminPrescripcionesPage() {
     <div>
       <PageHeader title="Prescripciones" subtitle="Despachos de receta a farmacia: estado, correlación y gestión" />
       <Card className="overflow-hidden">
-        <div className="flex items-center gap-2 border-b border-white/[0.06] p-4">
-          <Button
-            size="sm"
-            variant={soloContingencia ? 'outline' : 'ghost'}
-            leftIcon={<FileWarning className="h-3.5 w-3.5" />}
-            onClick={() => { setSoloContingencia((v) => !v); setPage(1); }}
-          >
-            Contingencia
-          </Button>
-          <div className="max-w-xs">
-            <Select value={estado} onChange={(e) => { setEstado(e.target.value); setPage(1); }}>
-              {ESTADOS.map((e) => <option key={e} value={e}>{e === '' ? 'Todos los estados' : e.replace(/_/g, ' ')}</option>)}
-            </Select>
-          </div>
-        </div>
+        <ListToolbar
+          search={{
+            value: search,
+            onChange: (v) => { setSearch(v); setPage(1); },
+            placeholder: 'Buscar por medicamento, referencia o motivo…',
+          }}
+          estado={{
+            value: estado,
+            onChange: (v) => { setEstado(v); setPage(1); },
+            options: ESTADO_OPTIONS,
+          }}
+          paciente={{
+            value: paciente,
+            onChange: (p) => { setPaciente(p); setPage(1); },
+          }}
+          extra={
+            <Button
+              size="sm"
+              variant={soloContingencia ? 'outline' : 'ghost'}
+              leftIcon={<FileWarning className="h-3.5 w-3.5" />}
+              onClick={() => { setSoloContingencia((v) => !v); setPage(1); }}
+            >
+              Contingencia
+            </Button>
+          }
+        />
         {isLoading ? (
           <div className="p-4"><SkeletonRows rows={6} /></div>
         ) : items.length === 0 ? (
@@ -132,15 +153,7 @@ export default function AdminPrescripcionesPage() {
                 </tbody>
               </table>
             </div>
-            {meta && (
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-                <p className="text-xs text-ink-400">{meta.total} despachos · página {meta.page} de {meta.totalPages || 1}</p>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} leftIcon={<ChevronLeft className="h-4 w-4" />}>Anterior</Button>
-                  <Button variant="secondary" size="sm" disabled={page >= (meta.totalPages || 1)} onClick={() => setPage((p) => p + 1)} rightIcon={<ChevronRight className="h-4 w-4" />}>Siguiente</Button>
-                </div>
-              </div>
-            )}
+            <Pagination meta={meta} page={page} onPageChange={setPage} itemLabel="despachos" />
           </>
         )}
       </Card>

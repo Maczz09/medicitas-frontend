@@ -10,11 +10,17 @@ import { homePathForRole } from '@/lib/roles';
 import { Navigate } from 'react-router-dom';
 import { useInactivityTimeout } from '@/hooks/useInactivityTimeout';
 import { useCloseWindowLogout } from '@/hooks/useCloseWindowLogout';
+import { useRealtimeSync } from '@/hooks/useRealtimeSync';
+import { ResilienceBanner } from '@/components/domain/ResilienceBanner';
 
 export function AppLayout() {
   const user = useAuthStore((s) => s.user);
   useInactivityTimeout();
   useCloseWindowLogout();
+  // Solo aquí, no en App.tsx: el ticket de /realtime requiere sesión — antes
+  // de esto, el hook se montaba también en /login y peleaba en un loop de
+  // reintentos contra 401 sin sentido, ya que el usuario aún no tiene token.
+  useRealtimeSync();
   const location = useLocation();
   const [mobileNav, setMobileNav] = useState(false);
 
@@ -60,6 +66,7 @@ export function AppLayout() {
 
       {/* Columna principal */}
       <div className="flex min-w-0 flex-1 flex-col">
+        <ResilienceBanner />
         <Topbar onMenu={() => setMobileNav(true)} />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto w-full max-w-7xl">

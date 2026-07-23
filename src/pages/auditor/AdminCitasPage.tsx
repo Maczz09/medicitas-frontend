@@ -1,31 +1,41 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { CalendarCheck, CalendarDays, ChevronLeft, ChevronRight, LogIn, XCircle } from 'lucide-react';
+import { CalendarDays, CalendarCheck, LogIn, XCircle, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Avatar, Button, Card, EmptyState, PageHeader, Select, SkeletonRows, Tooltip } from '@/components/ui';
+import { Avatar, Card, EmptyState, PageHeader, Pagination, SkeletonRows, Tooltip } from '@/components/ui';
 import { EstadoCitaBadge } from '@/components/domain/StatusBadge';
+import { ListToolbar } from '@/components/domain/ListToolbar';
 import { citasApi } from '@/api/citas.api';
 import { apiError } from '@/api/http';
 import { fmtDateTime } from '@/lib/format';
-import type { EstadoCita } from '@/types';
+import { useDebounce } from '@/hooks/useDebounce';
+import { queryKeys } from '@/lib/queryKeys';
+import type { EstadoCita, Paciente } from '@/types';
 
 const ESTADOS: (EstadoCita | '')[] = ['', 'Pendiente', 'En_Atencion', 'Completada', 'Cancelada', 'No_Asistida'];
+const ESTADO_OPTIONS = ESTADOS.map((e) => ({ value: e, label: e === '' ? 'Todos los estados' : e.replace('_', ' ') }));
 
 export default function AdminCitasPage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
+  const [search, setSearch] = useState('');
+  const [paciente, setPaciente] = useState<Paciente | null>(null);
+  const debouncedSearch = useDebounce(search, 350);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-citas', page, estado],
+    queryKey: queryKeys.citas.admin(page, estado, debouncedSearch, paciente?.id_paciente),
     // A diferencia de Recepción/Médico, Auditoría sí necesita ver las citas
     // de pacientes desactivados (soft-delete) para trazabilidad completa.
-    queryFn: () => citasApi.list({ page, limit: 10, estado: estado || undefined, incluirInactivos: true }),
+    queryFn: () => citasApi.list({
+      page, limit: 10, estado: estado || undefined, incluirInactivos: true,
+      q: debouncedSearch || undefined, idPaciente: paciente?.id_paciente,
+    }),
     placeholderData: keepPreviousData,
   });
 
-  const refresh = () => qc.invalidateQueries({ queryKey: ['admin-citas'] });
+  const refresh = () => qc.invalidateQueries({ queryKey: queryKeys.citas.all });
 
   const ingreso = useMutation({
     mutationFn: (id: string) => citasApi.registrarIngreso(id),
@@ -51,15 +61,22 @@ export default function AdminCitasPage() {
       <PageHeader title="Citas" subtitle="Todas las citas del sistema y su gestión" />
 
       <Card className="overflow-hidden">
-        <div className="border-b border-white/[0.06] p-4">
-          <div className="max-w-xs">
-            <Select value={estado} onChange={(e) => { setEstado(e.target.value); setPage(1); }}>
-              {ESTADOS.map((e) => (
-                <option key={e} value={e}>{e === '' ? 'Todos los estados' : e.replace('_', ' ')}</option>
-              ))}
-            </Select>
-          </div>
-        </div>
+        <ListToolbar
+          search={{
+            value: search,
+            onChange: (v) => { setSearch(v); setPage(1); },
+            placeholder: 'Buscar por especialidad…',
+          }}
+          estado={{
+            value: estado,
+            onChange: (v) => { setEstado(v); setPage(1); },
+            options: ESTADO_OPTIONS,
+          }}
+          paciente={{
+            value: paciente,
+            onChange: (p) => { setPaciente(p); setPage(1); },
+          }}
+        />
 
         {isLoading ? (
           <div className="p-4"><SkeletonRows rows={6} /></div>
@@ -93,7 +110,16 @@ export default function AdminCitasPage() {
                       </td>
                       <td className="hidden px-5 py-3 text-ink-300 lg:table-cell">{c.medico_nombre ?? '—'}</td>
                       <td className="px-5 py-3 text-ink-300">{fmtDateTime(c.fecha_hora)}</td>
-                      <td className="px-5 py-3"><EstadoCitaBadge estado={c.estado} /></td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <EstadoCitaBadge estado={c.estado} />
+                          {c.estado === 'En_Atencion' && c.pago_verificado === 0 && (
+                            <Tooltip content="Ingreso registrado con Pagos no disponible — el pago aún no se verificó contra el registro real. Se confirma solo en cuanto Pagos se recupere.">
+                              <ShieldAlert className="h-4 w-4 shrink-0 text-warning" />
+                            </Tooltip>
+                          )}
+                        </div>
+                      </td>
                       <td className="hidden px-5 py-3 font-mono text-xs text-ink-500 xl:table-cell">{c.correlation_id?.slice(0, 10) ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
@@ -119,15 +145,7 @@ export default function AdminCitasPage() {
                 </tbody>
               </table>
             </div>
-            {meta && (
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-                <p className="text-xs text-ink-400">{meta.total} citas · página {meta.page} de {meta.totalPages || 1}</p>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} leftIcon={<ChevronLeft className="h-4 w-4" />}>Anterior</Button>
-                  <Button variant="secondary" size="sm" disabled={page >= (meta.totalPages || 1)} onClick={() => setPage((p) => p + 1)} rightIcon={<ChevronRight className="h-4 w-4" />}>Siguiente</Button>
-                </div>
-              </div>
-            )}
+            <Pagination meta={meta} page={page} onPageChange={setPage} itemLabel="citas" />
           </>
         )}
       </Card>

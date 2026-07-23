@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CalendarClock, CalendarX, ChevronLeft, ChevronRight, Clock, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Button, Card, CardBody, EmptyState, Input, PageHeader } from '@/components/ui';
+import { Button, Card, CardBody, EmptyState, Input, PageHeader, Select } from '@/components/ui';
 import { useMedicos } from '@/hooks/useMedicos';
 import { medicosApi } from '@/api/medicos.api';
 import { apiError } from '@/api/http';
@@ -105,8 +105,14 @@ function filasActivasAHorarioBase(rows: Record<number, DiaRow>): HorarioBase[] {
 export default function AgendaPage() {
   const qc = useQueryClient();
   const user = useAuthStore((s) => s.user);
-  const idMedico = user?.idMedico ?? '';
+  const esAuditor = user?.rol === 'Auditor';
   const { data: medicos } = useMedicos();
+
+  // El Auditor no tiene idMedico propio — elige a QUÉ médico administrar de
+  // una lista; el Médico sigue viendo siempre y solo su propia agenda, sin
+  // selector, exactamente como antes.
+  const [idMedicoSeleccionado, setIdMedicoSeleccionado] = useState('');
+  const idMedico = esAuditor ? idMedicoSeleccionado : (user?.idMedico ?? '');
   const miMedico = medicos?.find((m) => m.id_medico === idMedico);
 
   // ── Plantilla base (respaldo) ─────────────────────────────────────────────
@@ -130,6 +136,19 @@ export default function AgendaPage() {
   // exitoso `rows` ya refleja lo recién guardado, así que no hace falta
   // volver a hidratar.
   const [hidratado, setHidratado] = useState(false);
+
+  // El Auditor puede cambiar de médico sin recargar la página — sin este
+  // reset, el formulario quedaría "hidratado" con los datos del médico
+  // ANTERIOR (el guard de arriba nunca deja que se vuelva a hidratar). Para
+  // el rol Médico esto es un no-op: su idMedico nunca cambia tras montar.
+  useEffect(() => {
+    setHidratado(false);
+    setSemanaHidratadaPara(null);
+    setSemanaOrigen(null);
+    setRows(initRows(true));
+    setSemanaRows(initRows());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idMedico]);
   useEffect(() => {
     if (hidratado || !disp.data) return;
     const horarios = disp.data.horarios ?? [];
@@ -227,21 +246,45 @@ export default function AgendaPage() {
 
   return (
     <div>
-      <PageHeader title="Mi agenda" subtitle="Configura tu horario semanal y bloqueos" />
+      <PageHeader
+        title={esAuditor ? 'Horarios médicos' : 'Mi agenda'}
+        subtitle={esAuditor ? 'Configura el horario semanal y los bloqueos de cualquier médico' : 'Configura tu horario semanal y bloqueos'}
+      />
+
+      {esAuditor && (
+        <div className="mb-5 max-w-sm">
+          <Select
+            label="Médico"
+            value={idMedicoSeleccionado}
+            onChange={(e) => setIdMedicoSeleccionado(e.target.value)}
+          >
+            <option value="">Selecciona un médico…</option>
+            {medicos?.map((m) => (
+              <option key={m.id_medico} value={m.id_medico}>
+                {m.nombre} {m.apellido} — {m.especialidad}
+              </option>
+            ))}
+          </Select>
+        </div>
+      )}
 
       {!idMedico ? (
         <Card>
           <CardBody>
             <EmptyState
               icon={CalendarClock}
-              title="Cuenta sin médico vinculado"
-              description="Tu usuario no está enlazado a un registro de médico. Pídele a un auditor que cree tu perfil de médico."
+              title={esAuditor ? 'Selecciona un médico' : 'Cuenta sin médico vinculado'}
+              description={
+                esAuditor
+                  ? 'Elige un médico arriba para configurar su horario y bloqueos.'
+                  : 'Tu usuario no está enlazado a un registro de médico. Pídele a un auditor que cree tu perfil de médico.'
+              }
             />
           </CardBody>
         </Card>
       ) : (
         <>
-          {miMedico && (
+          {miMedico && !esAuditor && (
             <div className="mb-5 flex items-center gap-3 rounded-2xl border border-white/[0.06] bg-white/[0.02] px-5 py-4">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-teal-700 text-sm font-semibold text-white">
                 {miMedico.nombre[0]}

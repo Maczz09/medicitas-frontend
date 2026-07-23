@@ -6,7 +6,7 @@ function idemHeaders(key?: string) {
 }
 
 export const coberturasApi = {
-  list: (params: { page?: number; limit?: number; estado?: string }) =>
+  list: (params: { page?: number; limit?: number; estado?: string; q?: string; idPaciente?: string }) =>
     http.get<{ data: CoberturaAdmin[]; meta: PageMeta }>('/coberturas', { params }).then((r) => r.data),
 
   validar: (body: ValidarCoberturaInput, idempotencyKey?: string) =>

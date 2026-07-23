@@ -6,10 +6,18 @@ import type {
   HorarioBase,
   HorarioSemanaResponse,
   Medico,
+  PageMeta,
 } from '@/types';
 
 export const medicosApi = {
   list: () => http.get<{ data: Medico[] }>('/medicos').then((r) => r.data.data),
+
+  // Distinto de list(): con page/limit/q, el backend pagina y busca por texto
+  // libre (nombre/apellido/cmp/especialidad) en vez de devolver el catálogo
+  // completo. list()/useMedicos() no se tocan — 4 pantallas dependen de traer
+  // todos los médicos de una vez.
+  search: (params: { page?: number; limit?: number; q?: string }) =>
+    http.get<{ data: Medico[]; meta: PageMeta }>('/medicos', { params }).then((r) => r.data),
 
   getById: (id: string) => http.get<{ data: Medico }>(`/medicos/${id}`).then((r) => r.data.data),
 

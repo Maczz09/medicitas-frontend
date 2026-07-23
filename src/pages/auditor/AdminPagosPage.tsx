@@ -1,25 +1,33 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, FileText, Receipt, RotateCcw } from 'lucide-react';
+import { FileText, Receipt, RotateCcw, ShieldAlert } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Avatar, Badge, Button, Card, EmptyState, Input, Modal, PageHeader, SkeletonRows, Tooltip } from '@/components/ui';
+import { Avatar, Badge, Button, Card, EmptyState, Input, Modal, PageHeader, Pagination, SkeletonRows, Tooltip } from '@/components/ui';
 import { EstadoPagoBadge } from '@/components/domain/StatusBadge';
+import { ListToolbar } from '@/components/domain/ListToolbar';
 import { pagosApi } from '@/api/pagos.api';
 import { facturacionApi } from '@/api/facturacion.api';
 import { apiError } from '@/api/http';
 import { fmtDateTime, fmtMoney } from '@/lib/format';
-import type { EstadoPago, PagoAdmin } from '@/types';
+import { useDebounce } from '@/hooks/useDebounce';
+import { queryKeys } from '@/lib/queryKeys';
+import type { EstadoPago, PagoAdmin, Paciente } from '@/types';
 
 export default function AdminPagosPage() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [paciente, setPaciente] = useState<Paciente | null>(null);
+  const debouncedSearch = useDebounce(search, 350);
   const [reverseTarget, setReverseTarget] = useState<PagoAdmin | null>(null);
   const [motivo, setMotivo] = useState('');
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-pagos', page],
-    queryFn: () => pagosApi.list({ page, limit: 10 }),
+    queryKey: queryKeys.pagos.admin(page, debouncedSearch, paciente?.id_paciente),
+    queryFn: () => pagosApi.list({
+      page, limit: 10, q: debouncedSearch || undefined, idPaciente: paciente?.id_paciente,
+    }),
     placeholderData: keepPreviousData,
   });
 
@@ -27,7 +35,7 @@ export default function AdminPagosPage() {
     mutationFn: () => pagosApi.reversar(reverseTarget!.id_pago, motivo),
     onSuccess: () => {
       toast.success('Pago reversado');
-      qc.invalidateQueries({ queryKey: ['admin-pagos'] });
+      qc.invalidateQueries({ queryKey: queryKeys.pagos.all });
       setReverseTarget(null);
       setMotivo('');
     },
@@ -52,6 +60,17 @@ export default function AdminPagosPage() {
       <PageHeader title="Pagos" subtitle="Todos los pagos del sistema, comprobantes y reversiones" />
 
       <Card className="overflow-hidden">
+        <ListToolbar
+          search={{
+            value: search,
+            onChange: (v) => { setSearch(v); setPage(1); },
+            placeholder: 'Buscar por código, comprobante o método…',
+          }}
+          paciente={{
+            value: paciente,
+            onChange: (p) => { setPaciente(p); setPage(1); },
+          }}
+        />
         {isLoading ? (
           <div className="p-4"><SkeletonRows rows={6} /></div>
         ) : pagos.length === 0 ? (
@@ -86,7 +105,16 @@ export default function AdminPagosPage() {
                       <td className="px-5 py-3"><Badge tone="neutral">{pg.metodo_pago}</Badge></td>
                       <td className="px-5 py-3 text-ink-200">{fmtMoney(pg.monto_total)}</td>
                       <td className="px-5 py-3 font-semibold text-ink-100">{fmtMoney(pg.monto_copago)}</td>
-                      <td className="px-5 py-3"><EstadoPagoBadge estado={pg.estado as EstadoPago} /></td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <EstadoPagoBadge estado={pg.estado as EstadoPago} />
+                          {Number(pg.monto_cobertura) > 0 && pg.cobertura_verificada === 0 && (
+                            <Tooltip content="Se cobró con Seguros no disponible — la cobertura declarada aún no se verificó contra el registro real. Se confirma sola en cuanto Seguros se recupere.">
+                              <ShieldAlert className="h-4 w-4 shrink-0 text-warning" />
+                            </Tooltip>
+                          )}
+                        </div>
+                      </td>
                       <td className="hidden px-5 py-3 font-mono text-xs text-ink-400 lg:table-cell">{pg.numero_comprobante ?? '—'}</td>
                       <td className="px-5 py-3">
                         <div className="flex items-center justify-end gap-1">
@@ -105,15 +133,7 @@ export default function AdminPagosPage() {
                 </tbody>
               </table>
             </div>
-            {meta && (
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-                <p className="text-xs text-ink-400">{meta.total} pagos · página {meta.page} de {meta.totalPages || 1}</p>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} leftIcon={<ChevronLeft className="h-4 w-4" />}>Anterior</Button>
-                  <Button variant="secondary" size="sm" disabled={page >= (meta.totalPages || 1)} onClick={() => setPage((p) => p + 1)} rightIcon={<ChevronRight className="h-4 w-4" />}>Siguiente</Button>
-                </div>
-              </div>
-            )}
+            <Pagination meta={meta} page={page} onPageChange={setPage} itemLabel="pagos" />
           </>
         )}
       </Card>

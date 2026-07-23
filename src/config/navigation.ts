@@ -49,6 +49,7 @@ export const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { label: 'Pagos', to: '/auditor/pagos', icon: CreditCard },
     { label: 'Prescripciones', to: '/auditor/prescripciones', icon: Pill },
     { label: 'Médicos', to: '/auditor/medicos', icon: Stethoscope },
+    { label: 'Horarios médicos', to: '/auditor/medicos/horarios', icon: CalendarClock },
     { label: 'Usuarios', to: '/auditor/usuarios', icon: UserCog },
     { label: 'Notificaciones', to: '/auditor/notificaciones', icon: Bell },
     { label: 'Eventos Auditados (Trazas)', to: '/auditor/trazas', icon: ScrollText },

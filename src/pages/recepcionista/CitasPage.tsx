@@ -29,6 +29,7 @@ import {
 } from '@/components/ui';
 import { EstadoCitaBadge } from '@/components/domain/StatusBadge';
 import { PatientPicker } from '@/components/domain/PatientPicker';
+import { ListToolbar } from '@/components/domain/ListToolbar';
 import { useMedicos } from '@/hooks/useMedicos';
 import { useActivityStore, type RecentCita } from '@/store/activity.store';
 import { citasApi } from '@/api/citas.api';
@@ -81,6 +82,7 @@ export default function CitasPage() {
   useServerSync();
 
   const [filtro, setFiltro] = useState<Filtro>('todas');
+  const [search, setSearch] = useState('');
 
   const estaPagada = (idCita: string) =>
     pagos.some((p) => p.idCita === idCita && p.estado !== 'REVERSADO');
@@ -188,6 +190,7 @@ export default function CitasPage() {
 
   // Filtrado y ordenado
   const hoyStr = hoyISO();
+  const searchLower = search.trim().toLowerCase();
   const citasFiltradas = citas
     .filter((c) => {
       if (filtro === 'hoy') return c.fechaHora?.startsWith(hoyStr);
@@ -195,6 +198,17 @@ export default function CitasPage() {
       if (filtro === 'en_atencion') return c.estado === 'En_Atencion';
       if (filtro === 'finalizadas') return ['Completada', 'Cancelada', 'No_Asistida'].includes(c.estado);
       return true;
+    })
+    // Sobre la actividad ya cargada en memoria (useActivityStore), no una
+    // query nueva al servidor — esta página no pagina, muestra la ventana de
+    // actividad reciente de la sesión.
+    .filter((c) => {
+      if (!searchLower) return true;
+      return (
+        c.pacienteNombre?.toLowerCase().includes(searchLower) ||
+        c.medicoNombre?.toLowerCase().includes(searchLower) ||
+        c.especialidad?.toLowerCase().includes(searchLower)
+      );
     })
     .sort((a, b) => {
       // En_Atencion primero, luego Pendiente, luego el resto
@@ -224,6 +238,19 @@ export default function CitasPage() {
           </Button>
         }
       />
+
+      {/* Búsqueda por paciente, médico o especialidad */}
+      {citas.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.02]">
+          <ListToolbar
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: 'Buscar por paciente, médico o especialidad…',
+            }}
+          />
+        </div>
+      )}
 
       {/* Tabs de filtro */}
       {citas.length > 0 && (
@@ -272,7 +299,9 @@ export default function CitasPage() {
       ) : citasFiltradas.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-ink-500">
           <CalendarDays className="mb-3 h-10 w-10 opacity-30" />
-          <p className="text-sm">No hay citas en esta categoría.</p>
+          <p className="text-sm">
+            {searchLower ? 'Ninguna cita coincide con tu búsqueda.' : 'No hay citas en esta categoría.'}
+          </p>
         </div>
       ) : (
         <AnimatePresence mode="popLayout">

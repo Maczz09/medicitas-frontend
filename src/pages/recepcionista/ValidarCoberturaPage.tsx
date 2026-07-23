@@ -19,7 +19,7 @@ import { coberturasApi } from '@/api/coberturas.api';
 import { apiError } from '@/api/http';
 import { useActivityStore } from '@/store/activity.store';
 import { fmtMoney } from '@/lib/format';
-import type { Paciente, ResultadoCobertura, TipoConsulta } from '@/types';
+import type { Paciente, TipoConsulta } from '@/types';
 
 const TIPOS: { value: TipoConsulta; label: string }[] = [
   { value: 'CONSULTA_GENERAL', label: 'Consulta general' },
@@ -37,7 +37,11 @@ export default function ValidarCoberturaPage() {
   const idAseguradora = 'ASEG-PROSALUD'; // fijo: la clínica trabaja con una aseguradora
   const [documento, setDocumento] = useState(prefill?.numero_documento ?? '');
   const [tipoConsulta, setTipoConsulta] = useState<TipoConsulta>('CONSULTA_GENERAL');
-  const [result, setResult] = useState<ResultadoCobertura | null>(null);
+  // Solo el puntero al id vive en local — el detalle se lee del activity store,
+  // para que una reconciliación en segundo plano (aseguradora recuperada tras
+  // una caída) lo actualice sola vía useRealtimeSync.ts, sin reclick.
+  const [idValidacionActiva, setIdValidacionActiva] = useState<string | null>(null);
+  const activa = coberturas.find((c) => c.idValidacion === idValidacionActiva) ?? null;
 
   const validar = useMutation({
     mutationFn: () =>
@@ -46,7 +50,7 @@ export default function ValidarCoberturaPage() {
         crypto.randomUUID(),
       ),
     onSuccess: (res) => {
-      setResult(res);
+      setIdValidacionActiva(res.idValidacion);
       addCobertura({
         idValidacion: res.idValidacion,
         idPaciente: paciente!.id_paciente,
@@ -55,6 +59,9 @@ export default function ValidarCoberturaPage() {
         estadoCobertura: res.estadoCobertura,
         porcentajeCobertura: res.porcentajeCobertura,
         codigoAutorizacion: res.codigoAutorizacion,
+        vigencia: res.vigencia,
+        esFallback: res.esFallback,
+        mensaje: res.mensaje,
         ts: Date.now(),
       });
       toast.success('Validación completada');
@@ -117,8 +124,8 @@ export default function ValidarCoberturaPage() {
         </Card>
 
         <div className="space-y-5 lg:col-span-3">
-          {result ? (
-            <CoverageResultBanner result={result} />
+          {activa ? (
+            <CoverageResultBanner result={activa} />
           ) : (
             <Card>
               <CardBody>

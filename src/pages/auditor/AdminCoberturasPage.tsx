@@ -1,21 +1,32 @@
 import { useState } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
-import { Avatar, Badge, Button, Card, EmptyState, PageHeader, Select, SkeletonRows } from '@/components/ui';
+import { ShieldCheck } from 'lucide-react';
+import { Avatar, Badge, Card, EmptyState, PageHeader, Pagination, SkeletonRows } from '@/components/ui';
 import { EstadoCoberturaBadge } from '@/components/domain/StatusBadge';
+import { ListToolbar } from '@/components/domain/ListToolbar';
 import { coberturasApi } from '@/api/coberturas.api';
 import { fmtDate } from '@/lib/format';
+import { useDebounce } from '@/hooks/useDebounce';
+import { queryKeys } from '@/lib/queryKeys';
+import type { Paciente } from '@/types';
 
 const ESTADOS = ['', 'APROBADA', 'RECHAZADA', 'PENDIENTE'];
+const ESTADO_OPTIONS = ESTADOS.map((e) => ({ value: e, label: e === '' ? 'Todos los estados' : e }));
 
 export default function AdminCoberturasPage() {
   const [page, setPage] = useState(1);
   const [estado, setEstado] = useState('');
+  const [search, setSearch] = useState('');
+  const [paciente, setPaciente] = useState<Paciente | null>(null);
+  const debouncedSearch = useDebounce(search, 350);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-coberturas', page, estado],
-    queryFn: () => coberturasApi.list({ page, limit: 10, estado: estado || undefined }),
+    queryKey: queryKeys.coberturas.admin(page, estado, debouncedSearch, paciente?.id_paciente),
+    queryFn: () => coberturasApi.list({
+      page, limit: 10, estado: estado || undefined,
+      q: debouncedSearch || undefined, idPaciente: paciente?.id_paciente,
+    }),
     placeholderData: keepPreviousData,
   });
 
@@ -26,13 +37,22 @@ export default function AdminCoberturasPage() {
     <div>
       <PageHeader title="Cobertura" subtitle="Todas las validaciones de seguro del sistema" />
       <Card className="overflow-hidden">
-        <div className="border-b border-white/[0.06] p-4">
-          <div className="max-w-xs">
-            <Select value={estado} onChange={(e) => { setEstado(e.target.value); setPage(1); }}>
-              {ESTADOS.map((e) => <option key={e} value={e}>{e === '' ? 'Todos los estados' : e}</option>)}
-            </Select>
-          </div>
-        </div>
+        <ListToolbar
+          search={{
+            value: search,
+            onChange: (v) => { setSearch(v); setPage(1); },
+            placeholder: 'Buscar por póliza o tipo de consulta…',
+          }}
+          estado={{
+            value: estado,
+            onChange: (v) => { setEstado(v); setPage(1); },
+            options: ESTADO_OPTIONS,
+          }}
+          paciente={{
+            value: paciente,
+            onChange: (p) => { setPaciente(p); setPage(1); },
+          }}
+        />
         {isLoading ? (
           <div className="p-4"><SkeletonRows rows={6} /></div>
         ) : items.length === 0 ? (
@@ -77,15 +97,7 @@ export default function AdminCoberturasPage() {
                 </tbody>
               </table>
             </div>
-            {meta && (
-              <div className="flex items-center justify-between gap-3 px-5 py-3.5">
-                <p className="text-xs text-ink-400">{meta.total} validaciones · página {meta.page} de {meta.totalPages || 1}</p>
-                <div className="flex items-center gap-1.5">
-                  <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} leftIcon={<ChevronLeft className="h-4 w-4" />}>Anterior</Button>
-                  <Button variant="secondary" size="sm" disabled={page >= (meta.totalPages || 1)} onClick={() => setPage((p) => p + 1)} rightIcon={<ChevronRight className="h-4 w-4" />}>Siguiente</Button>
-                </div>
-              </div>
-            )}
+            <Pagination meta={meta} page={page} onPageChange={setPage} itemLabel="validaciones" />
           </>
         )}
       </Card>

@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
-import { Droplet, FileHeart, Pencil, Pill, Plus, Stethoscope, TriangleAlert, X } from 'lucide-react';
+import { Droplet, FileHeart, Pencil, Pill, Plus, ShieldAlert, Stethoscope, TriangleAlert, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Badge, Button, Card, CardBody, EmptyState, FullSpinner, PageHeader, Select } from '@/components/ui';
+import { Badge, Button, Card, CardBody, EmptyState, FullSpinner, PageHeader, Select, Tooltip } from '@/components/ui';
 import { PatientPicker } from '@/components/domain/PatientPicker';
 import { hclApi } from '@/api/hcl.api';
 import { apiError } from '@/api/http';
@@ -162,6 +162,11 @@ export default function HistoriaClinicaPage() {
                     <div className="flex items-center gap-2">
                       <Badge tone="brand">{e.diagnosticoCie10}</Badge>
                       <span className="text-xs text-ink-500">{fmtDateTime(e.fecha)}</span>
+                      {e.citaCompletadaVerificada === false && (
+                        <Tooltip content="Se registró con Citas no disponible — la cita se marcará Completada sola cuando el servicio se recupere, o quedará marcada para revisión si ya no aplica.">
+                          <ShieldAlert className="h-4 w-4 shrink-0 text-warning" />
+                        </Tooltip>
+                      )}
                     </div>
                     {e.descripcion && <p className="mt-1.5 text-sm text-ink-200">{e.descripcion}</p>}
                     {e.prescripciones?.length > 0 && (

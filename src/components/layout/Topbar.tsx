@@ -3,6 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, LogOut, Menu, Moon, Sun } from 'lucide-react';
 import { Avatar } from '@/components/ui/Avatar';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { RealtimeStatusIndicator } from '@/components/domain/RealtimeStatusIndicator';
 import { useAuthStore } from '@/store/auth.store';
 import { useThemeStore } from '@/store/theme.store';
 import { ROLE_META } from '@/lib/roles';
@@ -40,6 +41,8 @@ export function Topbar({ onMenu }: { onMenu: () => void }) {
       </div>
 
       <div className="ml-auto flex items-center gap-3">
+        <RealtimeStatusIndicator />
+
         <Tooltip content={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}>
           <button
             onClick={toggleTheme}

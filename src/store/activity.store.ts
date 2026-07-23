@@ -22,6 +22,9 @@ export interface RecentCobertura {
   estadoCobertura: EstadoCobertura;
   porcentajeCobertura: number;
   codigoAutorizacion: string | null;
+  vigencia: string | null;
+  esFallback: boolean;
+  mensaje?: string;
   ts: number;
 }
 
@@ -63,6 +66,7 @@ interface ActivityState {
   addCita: (c: RecentCita) => void;
   updateCita: (idCita: string, p: Partial<RecentCita>) => void;
   addCobertura: (c: RecentCobertura) => void;
+  updateCobertura: (idValidacion: string, p: Partial<RecentCobertura>) => void;
   addPago: (p: RecentPago) => void;
   updatePago: (idPago: string, p: Partial<RecentPago>) => void;
   addReceta: (r: RecentReceta) => void;
@@ -79,6 +83,8 @@ export const useActivityStore = create<ActivityState>()(
       addCita: (c) => set((s) => ({ citas: upsert(s.citas, c, 'idCita') })),
       updateCita: (idCita, p) => set((s) => ({ citas: patch(s.citas, idCita, 'idCita', p) })),
       addCobertura: (c) => set((s) => ({ coberturas: upsert(s.coberturas, c, 'idValidacion') })),
+      updateCobertura: (idValidacion, p) =>
+        set((s) => ({ coberturas: patch(s.coberturas, idValidacion, 'idValidacion', p) })),
       addPago: (p) => set((s) => ({ pagos: upsert(s.pagos, p, 'idPago') })),
       updatePago: (idPago, p) => set((s) => ({ pagos: patch(s.pagos, idPago, 'idPago', p) })),
       addReceta: (r) => set((s) => ({ recetas: upsert(s.recetas, r, 'id') })),

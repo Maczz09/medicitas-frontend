@@ -2,7 +2,7 @@ import { http } from './http';
 import type { Cita, CitaAdmin, PageMeta, ReprogramarCitaInput, ReservarCitaInput } from '@/types';
 
 export const citasApi = {
-  list: (params: { page?: number; limit?: number; estado?: string; incluirInactivos?: boolean }) =>
+  list: (params: { page?: number; limit?: number; estado?: string; incluirInactivos?: boolean; q?: string; idPaciente?: string }) =>
     http.get<{ data: CitaAdmin[]; meta: PageMeta }>('/citas', { params }).then((r) => r.data),
 
   // Idempotency-Key SIEMPRE presente: reservar es una operación crítica (bloquea
